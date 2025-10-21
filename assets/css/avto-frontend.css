@@ -14,10 +14,11 @@
    =========================== */
 
 :root {
-	--mdr-boho-sage: #9da99c;
 	--mdr-burgundy: #7d5a68;
 	--mdr-lavender: #8b8391;
 	--mdr-dusty-rose: #e1cccb;
+	--mdr-boho-sage: #9da99c;
+
 	
 	/* Tints & Shades */
 	--mdr-burgundy-dark: #63444f;
@@ -86,7 +87,7 @@
 	justify-content: center;
 	min-height: 220px;
 	padding: 40px 20px;
-	border: 2px dashed var(--mdr-boho-sage);
+	border: 2px dashed var(--mdr-lavender);
 	border-radius: 12px;
 	background: var(--mdr-dusty-rose-light);
 	cursor: pointer;
@@ -193,7 +194,7 @@
 .avto-clothing-item:hover {
 	transform: translateY(-6px);
 	box-shadow: 0 8px 24px rgba(125, 90, 104, 0.18);
-	border-color: var(--mdr-boho-sage);
+	border-color: var(--mdr-lavender);
 }
 
 .avto-clothing-item.selected {
@@ -491,7 +492,7 @@
 
 .avto-download-btn {
 	color: #ffffff;
-	background: linear-gradient(135deg, var(--mdr-boho-sage) 0%, #7a8679 100%);
+	background: linear-gradient(135deg, var(--mdr-lavender) 0%, #7a8679 100%);
 	box-shadow: 0 3px 12px rgba(157, 169, 156, 0.3);
 }
 
@@ -646,7 +647,7 @@
 	justify-content: center;
 	margin: 1rem 0;
 	padding: 0.875rem 1.75rem;
-	background: linear-gradient(135deg, var(--mdr-boho-sage) 0%, var(--mdr-burgundy) 100%);
+	background: linear-gradient(135deg, var(--mdr-lavender) 0%, var(--mdr-burgundy) 100%);
 	color: #ffffff;
 	border: none;
 	border-radius: 8px;
@@ -746,7 +747,7 @@
 }
 
 .avto-modal-container::-webkit-scrollbar-thumb {
-	background: var(--mdr-boho-sage);
+	background: var(--mdr-lavender);
 	border-radius: 10px;
 }
 
