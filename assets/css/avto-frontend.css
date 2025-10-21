@@ -824,6 +824,69 @@ body.avto-modal-open {
 	margin-bottom: 0;
 }
 
+/* Modal-specific button fixes - ensure proper styling in WooCommerce themes */
+.avto-modal .avto-generate-btn {
+	padding: 18px 56px !important;
+	font-size: 18px !important;
+	font-weight: 700 !important;
+	color: #ffffff !important;
+	background: linear-gradient(135deg, var(--mdr-burgundy) 0%, var(--mdr-burgundy-dark) 100%) !important;
+	border: none !important;
+	border-radius: 12px !important;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	box-shadow: 0 4px 16px rgba(125, 90, 104, 0.3) !important;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+	line-height: 1.4 !important;
+	display: inline-block;
+	text-align: center;
+	text-decoration: none !important;
+}
+
+.avto-modal .avto-generate-btn:hover:not(:disabled) {
+	transform: translateY(-3px);
+	box-shadow: 0 8px 24px rgba(125, 90, 104, 0.4) !important;
+	background: linear-gradient(135deg, var(--mdr-burgundy-dark) 0%, #4d3540 100%) !important;
+	color: #ffffff !important;
+}
+
+.avto-modal .avto-generate-btn:disabled {
+	background: var(--mdr-sage-light) !important;
+	cursor: not-allowed !important;
+	box-shadow: none !important;
+	opacity: 0.6;
+	color: #666 !important;
+}
+
+/* Modal text fixes - ensure proper typography */
+.avto-modal .avto-section-title {
+	font-size: 22px !important;
+	font-weight: 600 !important;
+	color: var(--mdr-burgundy) !important;
+	margin: 0 0 24px 0 !important;
+	line-height: 1.3 !important;
+}
+
+.avto-modal .avto-upload-text,
+.avto-modal .avto-upload-hint {
+	font-size: 16px !important;
+	line-height: 1.5 !important;
+}
+
+.avto-modal .avto-upload-hint {
+	font-size: 14px !important;
+	color: #666 !important;
+}
+
+/* Ensure images display properly in modal */
+.avto-modal .avto-preview-img,
+.avto-modal .avto-result-img {
+	max-width: 100%;
+	height: auto;
+	display: block;
+}
+
 /* ===========================
    Responsive Design - Modal
    =========================== */

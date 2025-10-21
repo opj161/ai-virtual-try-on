@@ -686,6 +686,36 @@
 		},
 
 		/**
+		 * Scroll to element - handles both modal and page contexts
+		 * @param {jQuery} $element - Element to scroll to
+		 * @param {number} offset - Offset from top (default: 100)
+		 */
+		scrollToElement: function($element, offset = 100) {
+			if (!$element || !$element.length) {
+				return;
+			}
+
+			// Check if we're inside a modal
+			const $modal = $('.avto-modal-container');
+			
+			if ($modal.length && $modal.is(':visible')) {
+				// Modal context - scroll the modal container
+				const elementTop = $element.position().top;
+				const modalScrollTop = $modal.scrollTop();
+				const targetScroll = modalScrollTop + elementTop - offset;
+				
+				$modal.animate({
+					scrollTop: targetScroll
+				}, 500);
+			} else {
+				// Page context - scroll the page (shortcode mode)
+				$('html, body').animate({
+					scrollTop: $element.offset().top - offset
+				}, 500);
+			}
+		},
+
+		/**
 		 * Show loading state
 		 */
 		showLoadingState: function() {
@@ -695,12 +725,10 @@
 			$('#avto-error').hide();
 			$('#avto-success').hide();
 
-			// Scroll to results
+			// Scroll to results (modal-aware)
 			const $results = $('#avto-results-section');
 			if ($results.length) {
-				$('html, body').animate({
-					scrollTop: $results.offset().top - 100
-				}, 500);
+				this.scrollToElement($results, 100);
 			}
 		},
 
@@ -768,12 +796,10 @@
 			// Re-enable generate button if user image is still loaded
 			this.checkGenerateButtonState();
 
-			// Scroll to clothing selection
+			// Scroll to clothing selection (modal-aware)
 			const $gallery = $('.avto-gallery-section');
 			if ($gallery.length) {
-				$('html, body').animate({
-					scrollTop: $gallery.offset().top - 100
-				}, 500);
+				this.scrollToElement($gallery, 100);
 			}
 		},
 

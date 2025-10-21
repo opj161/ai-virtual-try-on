@@ -5,6 +5,34 @@ All notable changes to the AI Virtual Try-On WordPress Plugin will be documented
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.2] - 2025-10-22
+
+### Fixed - Modal Styling & Behavior 🐛
+- **Modal Button Styling** - Fixed "Generate Virtual Try-On" button not displaying correctly
+  - Added `!important` CSS declarations to override WooCommerce theme styles
+  - Ensured proper colors, sizing, gradients, and hover states
+  - Fixed text rendering and typography within modal context
+  
+- **Modal Scroll Behavior** - Fixed page scrolling behind modal instead of modal content scrolling
+  - Created context-aware `scrollToElement()` function
+  - Modal mode: Scrolls `.avto-modal-container` element
+  - Shortcode mode: Scrolls page (`html, body`) - maintains backward compatibility
+  - Applied to both results display and clothing gallery navigation
+  - Smooth animations in both contexts
+
+### Technical Changes
+- **CSS Updates** (`assets/css/avto-frontend.css`)
+  - Added `.avto-modal .avto-generate-btn` with explicit styling
+  - Fixed `.avto-modal .avto-section-title` typography
+  - Enhanced image display properties for modal context
+  
+- **JavaScript Updates** (`assets/js/avto-frontend.js`)
+  - New `scrollToElement()` helper function detects modal vs page context
+  - Updated `showLoadingState()` to use context-aware scrolling
+  - Updated clothing selection reset to use context-aware scrolling
+
+---
+
 ## [2.3.1] - 2025-10-22
 
 ### Improved - User Experience 🎨
