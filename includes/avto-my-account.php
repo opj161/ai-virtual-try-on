@@ -56,7 +56,7 @@ function avto_add_my_account_menu_item( $items ) {
 	unset( $items['customer-logout'] );
 	
 	// Add our item
-	$items['try-on-history'] = __( 'Try-On History', 'avto' );
+	$items['try-on-history'] = __( 'Virtual Try-On', 'avto' );
 	
 	// Re-add logout at the end
 	if ( $logout ) {
@@ -70,38 +70,98 @@ add_filter( 'woocommerce_account_menu_items', 'avto_add_my_account_menu_item' );
 /**
  * Render Try-On History content
  * 
- * Displays a gallery of user's past try-on sessions with:
- * - Generated images
- * - Product links
- * - Timestamps
- * - Delete functionality
+ * Displays combined Virtual Try-On page with:
+ * - Default image upload/management
+ * - Gallery of user's past try-on sessions
+ * - Product links, timestamps, delete functionality
  * 
  * @since 2.3.0
  */
 function avto_render_tryon_history_content() {
 	$user_id = get_current_user_id();
 	
-	// Get current page for pagination
-	$paged = get_query_var( 'paged' ) ? absint( get_query_var( 'paged' ) ) : 1;
-	
-	// Query user's try-on history
-	$args = array(
-		'post_type'      => 'avto_tryon_session',
-		'author'         => $user_id,
-		'posts_per_page' => 12,
-		'paged'          => $paged,
-		'orderby'        => 'date',
-		'order'          => 'DESC',
-		'post_status'    => 'publish',
-	);
-	
-	$history_query = new WP_Query( $args );
+	// Get default image data
+	$default_image_id  = get_user_meta( $user_id, '_avto_default_user_image_id', true );
+	$default_image_url = $default_image_id ? wp_get_attachment_image_url( $default_image_id, 'thumbnail' ) : '';
 	
 	?>
-	<div class="avto-history-wrapper">
-		<h2><?php esc_html_e( 'Your Virtual Try-On History', 'avto' ); ?></h2>
+	<div class="avto-tryon-wrapper">
 		
-		<?php if ( $history_query->have_posts() ) : ?>
+		<!-- Default Image Settings Section -->
+		<div class="avto-default-image-section" style="margin-bottom: 3rem; padding: 1.5rem; background: #f9f9f9; border-radius: 8px;">
+			<h3 style="margin-top: 0; margin-bottom: 1rem; font-size: 1.2rem;">
+				<?php esc_html_e( 'Default Try-On Photo', 'avto' ); ?>
+			</h3>
+			
+			<p style="margin-bottom: 1.5rem; color: #666;">
+				<?php esc_html_e( 'Set a default photo to use for virtual try-ons. This will be automatically loaded when you use the try-on feature on product pages.', 'avto' ); ?>
+			</p>
+			
+			<?php if ( $default_image_url ) : ?>
+				<div id="avto-current-default-image" style="margin-bottom: 1.5rem;">
+					<p style="margin-bottom: 0.5rem; font-weight: 600;">
+						<?php esc_html_e( 'Current Default Image:', 'avto' ); ?>
+					</p>
+					<img src="<?php echo esc_url( $default_image_url ); ?>" 
+						 alt="<?php esc_attr_e( 'Default try-on photo', 'avto' ); ?>" 
+						 style="max-width: 150px; border-radius: 8px; border: 2px solid #ddd;">
+					<br>
+					<button type="button" 
+							id="avto-remove-default-image-btn" 
+							class="button" 
+							style="margin-top: 0.75rem;">
+						<?php esc_html_e( 'Remove Default Image', 'avto' ); ?>
+					</button>
+				</div>
+			<?php endif; ?>
+			
+			<div class="avto-upload-section">
+				<label for="avto_default_user_image_upload" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+					<?php esc_html_e( $default_image_url ? 'Upload New Default Image' : 'Upload Default Image', 'avto' ); ?>
+				</label>
+				<input type="file" 
+					   name="avto_default_user_image_upload" 
+					   id="avto_default_user_image_upload" 
+					   accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+					   style="width: 100%; max-width: 400px; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+				<small style="display: block; margin-top: 0.5rem; color: #666;">
+					<?php esc_html_e( 'Accepted formats: JPG, PNG, WebP, HEIC, HEIF (Max 5MB)', 'avto' ); ?>
+				</small>
+				<button type="button" 
+						id="avto-upload-default-image-btn" 
+						class="button button-primary" 
+						style="margin-top: 1rem;" 
+						disabled>
+					<?php esc_html_e( 'Upload Image', 'avto' ); ?>
+				</button>
+				<span id="avto-upload-status" style="margin-left: 1rem; display: none;"></span>
+			</div>
+		</div>
+		
+		<!-- Try-On History Section -->
+		<div class="avto-history-section">
+			<h3 style="margin-bottom: 1rem; font-size: 1.2rem;">
+				<?php esc_html_e( 'Your Try-On History', 'avto' ); ?>
+			</h3>
+			
+			<?php
+			// Get current page for pagination
+			$paged = get_query_var( 'paged' ) ? absint( get_query_var( 'paged' ) ) : 1;
+			
+			// Query user's try-on history
+			$args = array(
+				'post_type'      => 'avto_tryon_session',
+				'author'         => $user_id,
+				'posts_per_page' => 12,
+				'paged'          => $paged,
+				'orderby'        => 'date',
+				'order'          => 'DESC',
+				'post_status'    => 'publish',
+			);
+			
+			$history_query = new WP_Query( $args );
+			
+			if ( $history_query->have_posts() ) : ?>
 			
 			<div class="avto-history-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
 				
@@ -194,7 +254,10 @@ function avto_render_tryon_history_content() {
 		<?php endif; ?>
 		
 		<?php wp_reset_postdata(); ?>
-	</div>
+		
+		</div><!-- .avto-history-section -->
+		
+	</div><!-- .avto-tryon-wrapper -->
 	
 	<style>
 		.avto-history-item:hover {
@@ -210,6 +273,101 @@ function avto_render_tryon_history_content() {
 	
 	<script type="text/javascript">
 	jQuery(document).ready(function($) {
+		
+		// Enable upload button when file is selected
+		$('#avto_default_user_image_upload').on('change', function() {
+			const hasFile = this.files && this.files.length > 0;
+			$('#avto-upload-default-image-btn').prop('disabled', !hasFile);
+		});
+		
+		// Handle default image upload
+		$('#avto-upload-default-image-btn').on('click', function() {
+			const $button = $(this);
+			const $status = $('#avto-upload-status');
+			const $fileInput = $('#avto_default_user_image_upload');
+			const file = $fileInput[0].files[0];
+			
+			if (!file) {
+				alert('<?php echo esc_js( __( 'Please select an image file.', 'avto' ) ); ?>');
+				return;
+			}
+			
+			// Validate file size (5MB)
+			if (file.size > 5 * 1024 * 1024) {
+				alert('<?php echo esc_js( __( 'File size must be less than 5MB.', 'avto' ) ); ?>');
+				return;
+			}
+			
+			// Create FormData
+			const formData = new FormData();
+			formData.append('action', 'avto_save_default_image');
+			formData.append('nonce', '<?php echo wp_create_nonce( 'avto-save-default-image-nonce' ); ?>');
+			formData.append('default_image', file);
+			
+			// Update UI
+			$button.prop('disabled', true).text('<?php echo esc_js( __( 'Uploading...', 'avto' ) ); ?>');
+			$status.html('<span style="color: #666;"><?php echo esc_js( __( 'Uploading...', 'avto' ) ); ?></span>').show();
+			
+			// AJAX upload
+			$.ajax({
+				url: '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>',
+				type: 'POST',
+				data: formData,
+				processData: false,
+				contentType: false,
+				success: function(response) {
+					if (response.success) {
+						$status.html('<span style="color: #46b450;">✓ ' + response.data.message + '</span>');
+						// Reload page after short delay
+						setTimeout(function() {
+							window.location.reload();
+						}, 1000);
+					} else {
+						$status.html('<span style="color: #dc3232;">✗ ' + (response.data.message || '<?php echo esc_js( __( 'Upload failed.', 'avto' ) ); ?>') + '</span>');
+						$button.prop('disabled', false).text('<?php echo esc_js( __( 'Upload Image', 'avto' ) ); ?>');
+					}
+				},
+				error: function() {
+					$status.html('<span style="color: #dc3232;">✗ <?php echo esc_js( __( 'An error occurred. Please try again.', 'avto' ) ); ?></span>');
+					$button.prop('disabled', false).text('<?php echo esc_js( __( 'Upload Image', 'avto' ) ); ?>');
+				}
+			});
+		});
+		
+		// Handle default image removal
+		$('#avto-remove-default-image-btn').on('click', function() {
+			if (!confirm('<?php echo esc_js( __( 'Are you sure you want to remove your default try-on photo?', 'avto' ) ); ?>')) {
+				return;
+			}
+			
+			const $button = $(this);
+			$button.prop('disabled', true).text('<?php echo esc_js( __( 'Removing...', 'avto' ) ); ?>');
+			
+			$.ajax({
+				url: '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>',
+				type: 'POST',
+				data: {
+					action: 'avto_save_default_image',
+					nonce: '<?php echo wp_create_nonce( 'avto-save-default-image-nonce' ); ?>',
+					remove_image: '1'
+				},
+				success: function(response) {
+					if (response.success) {
+						// Reload page to show updated state
+						window.location.reload();
+					} else {
+						alert(response.data.message || '<?php echo esc_js( __( 'Failed to remove image. Please try again.', 'avto' ) ); ?>');
+						$button.prop('disabled', false).text('<?php echo esc_js( __( 'Remove Default Image', 'avto' ) ); ?>');
+					}
+				},
+				error: function() {
+					alert('<?php echo esc_js( __( 'An error occurred. Please try again.', 'avto' ) ); ?>');
+					$button.prop('disabled', false).text('<?php echo esc_js( __( 'Remove Default Image', 'avto' ) ); ?>');
+				}
+			});
+		});
+		
+		// Existing delete history item handler
 		$('.avto-delete-history-item').on('click', function(e) {
 			e.preventDefault();
 			
@@ -252,8 +410,10 @@ function avto_render_tryon_history_content() {
 				}
 			});
 		});
+		
 	});
 	</script>
+	
 	<?php
 }
 add_action( 'woocommerce_account_try-on-history_endpoint', 'avto_render_tryon_history_content' );
@@ -313,126 +473,85 @@ function avto_handle_delete_history_item() {
 }
 add_action( 'wp_ajax_avto_delete_history_item', 'avto_handle_delete_history_item' );
 
-/**
- * Add Default User Image Field to Account Details
- * 
- * Allows users to set a default photo for virtual try-ons.
- * 
- * @since 2.3.0
- */
-function avto_add_default_image_field() {
-	$user_id           = get_current_user_id();
-	$default_image_id  = get_user_meta( $user_id, '_avto_default_user_image_id', true );
-	$default_image_url = $default_image_id ? wp_get_attachment_image_url( $default_image_id, 'thumbnail' ) : '';
-	
-	?>
-	<fieldset style="margin-top: 2rem; padding: 1.5rem; background: #f9f9f9; border-radius: 8px;">
-		<legend style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">
-			<?php esc_html_e( 'Virtual Try-On Settings', 'avto' ); ?>
-		</legend>
-		
-		<p style="margin-bottom: 1rem; color: #666;">
-			<?php esc_html_e( 'Set a default photo to use for virtual try-ons. This will be automatically loaded when you use the try-on feature.', 'avto' ); ?>
-		</p>
-		
-		<?php if ( $default_image_url ) : ?>
-			<div id="avto-current-default-image" style="margin-bottom: 1rem;">
-				<p style="margin-bottom: 0.5rem; font-weight: 600;">
-					<?php esc_html_e( 'Current Default Image:', 'avto' ); ?>
-				</p>
-				<img src="<?php echo esc_url( $default_image_url ); ?>" 
-					 alt="<?php esc_attr_e( 'Default try-on photo', 'avto' ); ?>" 
-					 style="max-width: 150px; border-radius: 8px; border: 2px solid #ddd;">
-			</div>
-			
-			<p class="form-row">
-				<label>
-					<input type="checkbox" name="avto_remove_default_image" value="1">
-					<?php esc_html_e( 'Remove current default image', 'avto' ); ?>
-				</label>
-			</p>
-		<?php endif; ?>
-		
-		<p class="form-row">
-			<label for="avto_default_user_image">
-				<?php esc_html_e( 'Upload New Default Image', 'avto' ); ?>
-			</label>
-			<input type="file" 
-				   name="avto_default_user_image" 
-				   id="avto_default_user_image" 
-				   accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-				   style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-			<small style="display: block; margin-top: 0.5rem; color: #666;">
-				<?php esc_html_e( 'Accepted formats: JPG, PNG, WebP, HEIC, HEIF (Max 5MB)', 'avto' ); ?>
-			</small>
-		</p>
-	</fieldset>
-	<?php
-}
-add_action( 'woocommerce_edit_account_form', 'avto_add_default_image_field' );
 
 /**
- * Save Default User Image on Account Details Save
+ * Handle AJAX request to save/remove default user image
  * 
  * @since 2.3.0
- * 
- * @param int $user_id User ID being saved
  */
-function avto_save_default_image_field( $user_id ) {
-	// Security: Verify user is logged in and matches $user_id
-	if ( ! is_user_logged_in() || get_current_user_id() !== $user_id ) {
-		return;
-	}
+function avto_handle_save_default_image() {
+	// Verify nonce
+	check_ajax_referer( 'avto-save-default-image-nonce', 'nonce' );
 	
-	// Check if remove checkbox is checked
-	if ( isset( $_POST['avto_remove_default_image'] ) && $_POST['avto_remove_default_image'] == '1' ) {
-		delete_user_meta( $user_id, '_avto_default_user_image_id' );
-	}
-	
-	// Check if a new file was uploaded
-	if ( isset( $_FILES['avto_default_user_image'] ) && $_FILES['avto_default_user_image']['error'] === UPLOAD_ERR_OK ) {
-		
-		// Validate file type and size
-		$allowed_types = array( 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif' );
-		$file_type     = $_FILES['avto_default_user_image']['type'];
-		$file_size     = $_FILES['avto_default_user_image']['size'];
-		$max_size      = 5 * 1024 * 1024; // 5MB
-		
-		if ( ! in_array( $file_type, $allowed_types, true ) ) {
-			wc_add_notice( __( 'Invalid file type. Please upload a JPG, PNG, WebP, HEIC, or HEIF image.', 'avto' ), 'error' );
-			return;
-		}
-		
-		if ( $file_size > $max_size ) {
-			wc_add_notice( __( 'File size must be less than 5MB.', 'avto' ), 'error' );
-			return;
-		}
-		
-		// Use WordPress media handling
-		require_once ABSPATH . 'wp-admin/includes/image.php';
-		require_once ABSPATH . 'wp-admin/includes/file.php';
-		require_once ABSPATH . 'wp-admin/includes/media.php';
-		
-		$attachment_id = media_handle_upload( 'avto_default_user_image', 0, array(
-			'post_title' => 'Default Try-On Photo - User ' . $user_id,
+	// Check if user is logged in
+	if ( ! is_user_logged_in() ) {
+		wp_send_json_error( array(
+			'message' => __( 'You must be logged in to perform this action.', 'avto' ),
 		) );
-		
-		if ( is_wp_error( $attachment_id ) ) {
-			wc_add_notice( 
-				sprintf( 
-					/* translators: %s: error message */
-					__( 'Failed to upload image: %s', 'avto' ), 
-					$attachment_id->get_error_message() 
-				), 
-				'error' 
-			);
-			return;
-		}
-		
-		// Save the attachment ID to user meta
-		update_user_meta( $user_id, '_avto_default_user_image_id', $attachment_id );
-		
-		wc_add_notice( __( 'Default try-on image updated successfully!', 'avto' ), 'success' );
 	}
+	
+	$user_id = get_current_user_id();
+	
+	// Handle image removal
+	if ( isset( $_POST['remove_image'] ) && $_POST['remove_image'] == '1' ) {
+		delete_user_meta( $user_id, '_avto_default_user_image_id' );
+		wp_send_json_success( array(
+			'message' => __( 'Default image removed successfully.', 'avto' ),
+		) );
+	}
+	
+	// Handle image upload
+	if ( ! isset( $_FILES['default_image'] ) || $_FILES['default_image']['error'] !== UPLOAD_ERR_OK ) {
+		wp_send_json_error( array(
+			'message' => __( 'File upload error. Please try again.', 'avto' ),
+		) );
+	}
+	
+	// Validate file type and size
+	$allowed_types = array( 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif' );
+	$file_type     = $_FILES['default_image']['type'];
+	$file_size     = $_FILES['default_image']['size'];
+	$max_size      = 5 * 1024 * 1024; // 5MB
+	
+	if ( ! in_array( $file_type, $allowed_types, true ) ) {
+		wp_send_json_error( array(
+			'message' => __( 'Invalid file type. Please upload a JPG, PNG, WebP, HEIC, or HEIF image.', 'avto' ),
+		) );
+	}
+	
+	if ( $file_size > $max_size ) {
+		wp_send_json_error( array(
+			'message' => __( 'File size must be less than 5MB.', 'avto' ),
+		) );
+	}
+	
+	// Use WordPress media handling
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	require_once ABSPATH . 'wp-admin/includes/media.php';
+	
+	$attachment_id = media_handle_upload( 'default_image', 0, array(
+		'post_title'  => 'Default Try-On Photo - User ' . $user_id,
+		'post_author' => $user_id,
+	) );
+	
+	if ( is_wp_error( $attachment_id ) ) {
+		wp_send_json_error( array(
+			'message' => sprintf( 
+				/* translators: %s: error message */
+				__( 'Failed to upload image: %s', 'avto' ), 
+				$attachment_id->get_error_message() 
+			),
+		) );
+	}
+	
+	// Save the attachment ID to user meta
+	update_user_meta( $user_id, '_avto_default_user_image_id', $attachment_id );
+	
+	wp_send_json_success( array(
+		'message'       => __( 'Default image uploaded successfully!', 'avto' ),
+		'attachment_id' => $attachment_id,
+	) );
 }
-add_action( 'woocommerce_save_account_details', 'avto_save_default_image_field' );
+add_action( 'wp_ajax_avto_save_default_image', 'avto_handle_save_default_image' );
+

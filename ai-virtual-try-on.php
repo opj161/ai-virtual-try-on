@@ -3,7 +3,7 @@
  * Plugin Name:       AI Virtual Try-On
  * Plugin URI:        https://github.com/yourusername/ai-virtual-try-on
  * Description:       AI-powered virtual try-on experience using Google's Gemini 2.5 Flash Image API. WooCommerce integration for seamless product page try-ons. Supports JPEG, PNG, WebP, HEIC, and HEIF formats. Fully customizable via admin settings.
- * Version:           2.3.0
+ * Version:           2.3.1
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Requires Plugins:  woocommerce
@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Plugin Constants
  */
-define( 'AVTO_VERSION', '2.3.0' );
+define( 'AVTO_VERSION', '2.3.1' );
 define( 'AVTO_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AVTO_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AVTO_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -126,6 +126,12 @@ function avto_upgrade_routine( $from_version ) {
 		// Ensure rewrite rules are flushed for new try-on-history endpoint
 		// This is also handled in activation, but adding here for manual upgrades
 		flush_rewrite_rules();
+	}
+	
+	// Upgrade to 2.3.1 - UI restructuring only, no data changes
+	// Moved default image upload to Virtual Try-On tab (from Account Details)
+	if ( version_compare( $from_version, '2.3.1', '<' ) ) {
+		// No database changes needed - purely UI/UX improvements
 	}
 	
 	// Set upgrade notice transient
