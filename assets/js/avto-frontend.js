@@ -1,0 +1,748 @@
+/**
+ * AI Virtual Try-On - Frontend JavaScript
+ * 
+ * Dual-mode support:
+ * 1. WooCommerce modal mode (product pages)
+ * 2. Shortcode mode (dedicated pages) - backward compatibility
+ */
+
+(function($) {
+	'use strict';
+
+	/**
+	 * WooCommerce Modal Mode
+	 */
+	const AVTOModal = {
+		isModalMode: false,
+		productId: 0,
+
+		/**
+		 * Initialize modal functionality
+		 */
+		init: function() {
+			// Check if we're in WooCommerce mode (modal exists)
+			if ( $('#avto-modal').length ) {
+				this.isModalMode = true;
+				this.bindModalEvents();
+			} else {
+				// Shortcode mode - use original initialization
+				AVTOCore.init();
+			}
+		},
+
+		/**
+		 * Bind modal-specific events
+		 */
+		bindModalEvents: function() {
+			const self = this;
+
+			// Trigger button click
+			$(document).on('click', '.avto-wc-tryon-trigger', function(e) {
+				e.preventDefault();
+				const $button = $(this);
+				self.productId = $button.data('product-id');
+				self.openModal();
+			});
+
+			// Close button and overlay
+			$(document).on('click', '.avto-modal-close, .avto-modal-overlay', function() {
+				self.closeModal();
+			});
+
+			// ESC key to close
+			$(document).on('keydown', function(e) {
+				if ( e.key === 'Escape' && $('#avto-modal').is(':visible') ) {
+					self.closeModal();
+				}
+			});
+
+			// Variable product support - listen for variation changes
+			self.bindVariationEvents();
+		},
+
+		/**
+		 * Bind WooCommerce variation events for variable products
+		 */
+		bindVariationEvents: function() {
+			const self = this;
+
+			// Listen for variation selection
+			$('form.variations_form').on('found_variation', function(event, variation) {
+				console.log('AVTO: Variation selected', variation);
+				
+				// Store the selected variation data
+				self.selectedVariation = variation;
+				
+				// If modal is open, update the gallery with variation images
+				if ( $('#avto-modal').is(':visible') && variation.image && variation.image.full_src ) {
+					self.updateGalleryWithVariation(variation);
+				}
+			});
+
+			// Listen for variation reset (when user clears selections)
+			$('form.variations_form').on('reset_data', function() {
+				console.log('AVTO: Variation reset');
+				self.selectedVariation = null;
+				
+				// If modal is open, reload the original product images
+				if ( $('#avto-modal').is(':visible') ) {
+					self.reloadProductImages();
+				}
+			});
+		},
+
+		/**
+		 * Update gallery with variation-specific images
+		 */
+		updateGalleryWithVariation: function(variation) {
+			const $gallery = $('.avto-clothing-gallery');
+			
+			// Create variation image array
+			const variationImages = [];
+			
+			// Add main variation image
+			if ( variation.image && variation.image.full_src ) {
+				variationImages.push({
+					id: variation.image_id || 0,
+					url: variation.image.full_src,
+					alt: variation.image.alt || variation.image.title || 'Variation image',
+					name: variation.image.caption || 'Variation Image'
+				});
+			}
+			
+			// Add gallery images if available
+			if ( variation.variation_gallery_images && Array.isArray(variation.variation_gallery_images) ) {
+				variation.variation_gallery_images.forEach((img, index) => {
+					variationImages.push({
+						id: img.image_id || 0,
+						url: img.full_src || img.url,
+						alt: img.alt || img.title || 'Variation gallery image',
+						name: img.caption || 'Variation Image ' + (index + 2)
+					});
+				});
+			}
+			
+			// If we have variation images, update the gallery
+			if ( variationImages.length > 0 ) {
+				this.populateGallery(variationImages);
+				
+				// Re-initialize core to bind new gallery item events
+				AVTOCore.bindEvents();
+			}
+		},
+
+		/**
+		 * Reload original product images (after variation reset)
+		 */
+		reloadProductImages: function() {
+			const self = this;
+			
+			if ( ! avtoProductData || ! avtoProductData.productId ) {
+				return;
+			}
+			
+			$.ajax({
+				url: avtoProductData.ajaxUrl,
+				type: 'POST',
+				data: {
+					action: 'avto_get_product_images',
+					product_id: avtoProductData.productId,
+					nonce: avtoProductData.nonce
+				},
+				success: function(response) {
+					if ( response.success && response.data.images && response.data.images.length > 0 ) {
+						self.populateGallery(response.data.images);
+						AVTOCore.bindEvents();
+					}
+				},
+				error: function(xhr, status, error) {
+					console.error('AVTO: Error reloading product images', status, error);
+				}
+			});
+		},
+
+	/**
+	 * Open modal and initialize try-on UI
+	 */
+	openModal: function() {
+		const $modal = $('#avto-modal');
+		const $container = $('#avto-container');
+
+		// Debug: Log all available data
+		console.log('AVTO Debug - Opening modal...');
+		console.log('AVTO Debug - avtoProductData exists:', typeof avtoProductData !== 'undefined');
+		console.log('AVTO Debug - avtoAjax exists:', typeof avtoAjax !== 'undefined');
+		
+		if (typeof avtoProductData !== 'undefined') {
+			console.log('AVTO Debug - avtoProductData:', avtoProductData);
+		}
+
+		// Check if we have product data
+		if ( typeof avtoProductData === 'undefined' || ! avtoProductData.productId ) {
+			console.error('AVTO: Product data not available');
+			console.error('AVTO: Available globals:', Object.keys(window).filter(k => k.startsWith('avto')));
+			alert('Unable to load product data. Please refresh the page.');
+			return;
+		}
+
+		// Fetch product images via AJAX
+		$.ajax({
+			url: avtoProductData.ajaxUrl,
+			type: 'POST',
+			data: {
+				action: 'avto_get_product_images',
+				product_id: avtoProductData.productId,
+				nonce: avtoProductData.nonce
+			},
+			beforeSend: function() {
+				// Show loading state
+				$modal.addClass('avto-loading').attr('aria-hidden', 'false').fadeIn(300);
+				$('body').addClass('avto-modal-open');
+			},
+			success: function(response) {
+				$modal.removeClass('avto-loading');
+				
+				if ( response.success && response.data.images && response.data.images.length > 0 ) {
+					// Store images
+					AVTOModal.productImages = response.data.images;
+					
+					// Create UI if not present
+					if ( ! $container.find('.avto-upload-section').length ) {
+						AVTOModal.createUIStructure();
+					}
+					
+					// Populate gallery with fetched images
+					AVTOModal.populateGallery(response.data.images);
+					
+					// Focus close button for accessibility
+					setTimeout(function() {
+						$('.avto-modal-close').focus();
+					}, 350);
+					
+					// Initialize core functionality
+					AVTOCore.init();
+				} else {
+					$modal.fadeOut(300);
+					$('body').removeClass('avto-modal-open');
+					alert(response.data && response.data.message ? response.data.message : 'No images found for this product.');
+				}
+			},
+			error: function(xhr, status, error) {
+				console.error('AVTO AJAX Error:', status, error);
+				$modal.removeClass('avto-loading').fadeOut(300);
+				$('body').removeClass('avto-modal-open');
+				alert('Error loading product images. Please try again.');
+			}
+		});
+	},		/**
+		 * Close modal and reset state
+		 */
+		closeModal: function() {
+			const $modal = $('#avto-modal');
+			$modal.attr('aria-hidden', 'true').fadeOut(300);
+			$('body').removeClass('avto-modal-open');
+
+			// Reset UI state
+			AVTOCore.reset();
+		},
+
+		/**
+		 * Create full UI structure
+		 */
+		createUIStructure: function() {
+			const $container = $('#avto-container');
+			const uploadButtonText = typeof avtoAjax !== 'undefined' && avtoAjax.strings ? 
+				avtoAjax.strings.uploadText || 'Click to upload or drag and drop' : 
+				'Click to upload or drag and drop';
+
+			$container.html(`
+				<!-- Upload Section -->
+				<div class="avto-section avto-upload-section">
+					<h3 class="avto-section-title">Step 1: Upload Your Photo</h3>
+					<div class="avto-upload-area">
+						<input 
+							type="file" 
+							id="avto-user-image" 
+							class="avto-file-input" 
+							accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+							aria-label="Upload your photo"
+						>
+						<label for="avto-user-image" class="avto-file-label">
+							<svg class="avto-upload-icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+								<polyline points="17 8 12 3 7 8"></polyline>
+								<line x1="12" y1="3" x2="12" y2="15"></line>
+							</svg>
+							<span class="avto-upload-text">${uploadButtonText}</span>
+							<span class="avto-upload-hint">JPG, PNG, WebP, HEIC, or HEIF (max 5MB)</span>
+						</label>
+						<div id="avto-image-preview" class="avto-image-preview" style="display: none;">
+							<img id="avto-preview-img" src="" alt="Your photo preview">
+							<button type="button" id="avto-remove-image" class="avto-remove-btn" aria-label="Remove image">
+								<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<line x1="18" y1="6" x2="6" y2="18"></line>
+									<line x1="6" y1="6" x2="18" y2="18"></line>
+								</svg>
+							</button>
+						</div>
+					</div>
+				</div>
+
+				<!-- Clothing Gallery Section -->
+				<div class="avto-section avto-gallery-section">
+					<h3 class="avto-section-title">Step 2: Select Product Image</h3>
+					<div class="avto-clothing-gallery"></div>
+				</div>
+
+				<!-- Generate Button Section -->
+				<div class="avto-section avto-action-section">
+					<button id="avto-generate-btn" class="avto-btn avto-btn-primary" disabled>
+						Generate Virtual Try-On
+					</button>
+				</div>
+
+				<!-- Results Section -->
+				<div id="avto-results-section" class="avto-section avto-results-section" style="display: none;">
+					<div id="avto-loading" class="avto-loading" style="display: none;">
+						<div class="avto-spinner"></div>
+						<p>Generating your virtual try-on...</p>
+					</div>
+
+					<div id="avto-error" class="avto-error" style="display: none;">
+						<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<circle cx="12" cy="12" r="10"></circle>
+							<line x1="12" y1="8" x2="12" y2="12"></line>
+							<line x1="12" y1="16" x2="12.01" y2="16"></line>
+						</svg>
+						<p id="avto-error-message"></p>
+						<button id="avto-try-again-btn" class="avto-btn avto-btn-secondary">Try Again</button>
+					</div>
+
+					<div id="avto-success" class="avto-success" style="display: none;">
+						<img id="avto-final-image" src="" alt="Virtual try-on result">
+						<div class="avto-success-actions">
+							<button id="avto-download-btn" class="avto-btn avto-btn-secondary">Download Image</button>
+							<button id="avto-new-tryon-btn" class="avto-btn avto-btn-primary">Try Another</button>
+						</div>
+					</div>
+				</div>
+			`);
+		},
+
+		/**
+		 * Populate gallery with product images
+		 */
+		populateGallery: function(images) {
+			const $gallery = $('.avto-clothing-gallery');
+			$gallery.empty();
+
+			images.forEach((image, index) => {
+				const $item = $('<div>')
+					.addClass('avto-clothing-item')
+					.attr({
+						'data-clothing-id': image.id,
+						'data-product-id': this.productId,
+						'tabindex': '0',
+						'role': 'button',
+						'aria-label': image.alt || 'Product image ' + (index + 1)
+					})
+					.html(`
+						<img src="${image.url}" alt="${image.alt || ''}" loading="lazy">
+						<span class="avto-clothing-name">${image.name || 'Image ' + (index + 1)}</span>
+					`);
+
+				$gallery.append($item);
+			});
+
+			// Store product ID for AJAX
+			$('#avto-generate-btn').data('product-id', this.productId);
+		}
+	};
+
+	/**
+	 * Core Try-On Functionality (shared between modal and shortcode)
+	 */
+	const AVTOCore = {
+		userImageFile: null,
+		selectedClothingId: null,
+		selectedClothingFile: null,
+
+		/**
+		 * Initialize core functionality
+		 */
+		init: function() {
+			this.bindEvents();
+			this.checkGenerateButtonState();
+		},
+
+		/**
+		 * Bind event handlers
+		 */
+		bindEvents: function() {
+			const self = this;
+
+			// File input change
+			$(document).on('change', '#avto-user-image', function(e) {
+				self.handleFileSelect(e);
+			});
+
+			// Drag and drop
+			$(document).on('dragover', '.avto-file-label', function(e) {
+				self.handleDragOver(e);
+			});
+			$(document).on('dragleave', '.avto-file-label', function(e) {
+				self.handleDragLeave(e);
+			});
+			$(document).on('drop', '.avto-file-label', function(e) {
+				self.handleFileDrop(e);
+			});
+
+			// Remove image button
+			$(document).on('click', '#avto-remove-image', function(e) {
+				self.handleRemoveImage(e);
+			});
+
+			// Clothing item selection
+			$(document).on('click', '.avto-clothing-item', function(e) {
+				self.handleClothingSelect(e, $(this));
+			});
+
+			// Keyboard navigation for clothing items
+			$(document).on('keydown', '.avto-clothing-item', function(e) {
+				if ( e.key === 'Enter' || e.key === ' ' ) {
+					e.preventDefault();
+					$(this).click();
+				}
+			});
+
+			// Generate button
+			$(document).on('click', '#avto-generate-btn', function(e) {
+				self.handleGenerate(e);
+			});
+
+			// Try again button
+			$(document).on('click', '#avto-try-again-btn', function(e) {
+				self.handleTryAgain(e);
+			});
+
+			// Download button
+			$(document).on('click', '#avto-download-btn', function(e) {
+				self.handleDownload(e);
+			});
+
+			// New try-on button
+			$(document).on('click', '#avto-new-tryon-btn', function(e) {
+				self.handleNewTryon(e);
+			});
+		},
+
+		/**
+		 * Handle file selection from input
+		 */
+		handleFileSelect: function(e) {
+			const file = e.target.files[0];
+			if (file) {
+				this.validateAndPreviewFile(file);
+			}
+		},
+
+		/**
+		 * Handle drag over event
+		 */
+		handleDragOver: function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			$(e.currentTarget).addClass('drag-over');
+		},
+
+		/**
+		 * Handle drag leave event
+		 */
+		handleDragLeave: function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			$(e.currentTarget).removeClass('drag-over');
+		},
+
+		/**
+		 * Handle file drop event
+		 */
+		handleFileDrop: function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			$(e.currentTarget).removeClass('drag-over');
+
+			const files = e.originalEvent.dataTransfer.files;
+			if (files.length > 0) {
+				this.validateAndPreviewFile(files[0]);
+			}
+		},
+
+		/**
+		 * Validate and preview the selected file
+		 */
+		validateAndPreviewFile: function(file) {
+			// Validate file type
+			const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+			const unsupportedFormats = ['image/avif'];
+
+			if (unsupportedFormats.includes(file.type)) {
+				alert('AVIF format is not supported by the AI service. Please convert your image to JPG, PNG, WebP, or HEIC format first.');
+				return;
+			}
+
+			if (!validTypes.includes(file.type)) {
+				alert('Invalid file type. Supported formats: JPG, PNG, WebP, HEIC, and HEIF.');
+				return;
+			}
+
+			// Validate file size (max 5MB)
+			const maxSize = 5 * 1024 * 1024;
+			if (file.size > maxSize) {
+				alert('File size must be less than 5MB.');
+				return;
+			}
+
+			// Store file
+			this.userImageFile = file;
+
+			// Preview image
+			const reader = new FileReader();
+			const self = this;
+			reader.onload = function(e) {
+				$('#avto-preview-img').attr('src', e.target.result);
+				$('.avto-file-label').hide();
+				$('#avto-image-preview').fadeIn(300);
+				self.checkGenerateButtonState();
+			};
+			reader.readAsDataURL(file);
+		},
+
+		/**
+		 * Handle remove image button click
+		 */
+		handleRemoveImage: function(e) {
+			e.preventDefault();
+			this.userImageFile = null;
+			$('#avto-user-image').val('');
+			$('#avto-image-preview').hide();
+			$('.avto-file-label').fadeIn(300);
+			this.checkGenerateButtonState();
+		},
+
+		/**
+		 * Handle clothing item selection
+		 */
+		handleClothingSelect: function(e, $item) {
+			e.preventDefault();
+
+			// Remove selected class from all items
+			$('.avto-clothing-item').removeClass('selected').attr('aria-pressed', 'false');
+
+			// Add selected class to clicked item
+			$item.addClass('selected').attr('aria-pressed', 'true');
+
+			// Store selection - check if we're in WooCommerce mode
+			this.selectedClothingId = $item.data('clothing-id');
+			this.selectedClothingFile = $item.data('clothing-file') || '';
+
+			this.checkGenerateButtonState();
+		},
+
+		/**
+		 * Check if generate button should be enabled
+		 */
+		checkGenerateButtonState: function() {
+			const $generateBtn = $('#avto-generate-btn');
+			if (this.userImageFile && this.selectedClothingId) {
+				$generateBtn.prop('disabled', false);
+			} else {
+				$generateBtn.prop('disabled', true);
+			}
+		},
+
+		/**
+		 * Handle generate button click
+		 */
+		handleGenerate: function(e) {
+			e.preventDefault();
+
+			// Validate inputs
+			if (!this.userImageFile) {
+				alert('Please upload your photo first.');
+				return;
+			}
+
+			if (!this.selectedClothingId) {
+				alert('Please select a clothing item.');
+				return;
+			}
+
+			// Show loading state
+			this.showLoadingState();
+
+			// Prepare form data
+			const formData = new FormData();
+			formData.append('action', 'avto_generate_image');
+			formData.append('nonce', avtoAjax.nonce);
+			formData.append('user_image', this.userImageFile);
+
+			// Check if we're in WooCommerce mode (modal) or shortcode mode
+			const $generateBtn = $('#avto-generate-btn');
+			const productId = $generateBtn.data('product-id');
+
+			if (productId) {
+				// WooCommerce mode: send product_id and clothing_image_id
+				formData.append('product_id', productId);
+				formData.append('clothing_image_id', this.selectedClothingId);
+			} else {
+				// Shortcode mode: send clothing_id and clothing_file
+				formData.append('clothing_id', this.selectedClothingId);
+				formData.append('clothing_file', this.selectedClothingFile);
+			}
+
+			// Make AJAX request
+			const self = this;
+			$.ajax({
+				url: avtoAjax.ajaxUrl,
+				type: 'POST',
+				data: formData,
+				processData: false,
+				contentType: false,
+				timeout: 65000,
+				success: function(response) {
+					if (response.success) {
+						self.showSuccessState(response.data.image_url);
+					} else {
+						self.showErrorState(response.data.message || 'An error occurred. Please try again.');
+					}
+				},
+				error: function(xhr, status, error) {
+					let errorMsg = 'An error occurred. Please try again.';
+
+					if (status === 'timeout') {
+						errorMsg = 'Request timed out. The image generation is taking longer than expected. Please try again.';
+					} else if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+						errorMsg = xhr.responseJSON.data.message;
+					}
+
+					self.showErrorState(errorMsg);
+				}
+			});
+		},
+
+		/**
+		 * Show loading state
+		 */
+		showLoadingState: function() {
+			$('#avto-generate-btn').prop('disabled', true);
+			$('#avto-results-section').fadeIn(300);
+			$('#avto-loading').show();
+			$('#avto-error').hide();
+			$('#avto-success').hide();
+
+			// Scroll to results
+			const $results = $('#avto-results-section');
+			if ($results.length) {
+				$('html, body').animate({
+					scrollTop: $results.offset().top - 100
+				}, 500);
+			}
+		},
+
+		/**
+		 * Show error state
+		 */
+		showErrorState: function(message) {
+			$('#avto-loading').hide();
+			$('#avto-success').hide();
+			$('#avto-error-message').text(message);
+			$('#avto-error').fadeIn(300);
+			$('#avto-generate-btn').prop('disabled', false);
+		},
+
+		/**
+		 * Show success state
+		 */
+		showSuccessState: function(imageUrl) {
+			$('#avto-loading').hide();
+			$('#avto-error').hide();
+			$('#avto-final-image').attr('src', imageUrl);
+			$('#avto-success').fadeIn(300);
+			$('#avto-generate-btn').prop('disabled', false);
+		},
+
+		/**
+		 * Handle try again button click
+		 */
+		handleTryAgain: function(e) {
+			e.preventDefault();
+			$('#avto-results-section').fadeOut(300);
+			$('#avto-generate-btn').prop('disabled', false);
+		},
+
+		/**
+		 * Handle download button click
+		 */
+		handleDownload: function(e) {
+			e.preventDefault();
+			const imageUrl = $('#avto-final-image').attr('src');
+
+			// Create temporary link and trigger download
+			const link = document.createElement('a');
+			link.href = imageUrl;
+			link.download = 'virtual-tryon-' + Date.now() + '.png';
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+		},
+
+		/**
+		 * Handle new try-on button click
+		 */
+		handleNewTryon: function(e) {
+			e.preventDefault();
+
+			// Reset only clothing selection (keep user image)
+			this.selectedClothingId = null;
+			this.selectedClothingFile = null;
+
+			// Reset UI
+			$('.avto-clothing-item').removeClass('selected').attr('aria-pressed', 'false');
+			$('#avto-results-section').fadeOut(300);
+
+			// Re-enable generate button if user image is still loaded
+			this.checkGenerateButtonState();
+
+			// Scroll to clothing selection
+			const $gallery = $('.avto-gallery-section');
+			if ($gallery.length) {
+				$('html, body').animate({
+					scrollTop: $gallery.offset().top - 100
+				}, 500);
+			}
+		},
+
+		/**
+		 * Reset all state (for modal close)
+		 */
+		reset: function() {
+			this.userImageFile = null;
+			this.selectedClothingId = null;
+			this.selectedClothingFile = null;
+
+			$('#avto-user-image').val('');
+			$('#avto-image-preview').hide();
+			$('.avto-file-label').show();
+			$('.avto-clothing-item').removeClass('selected').attr('aria-pressed', 'false');
+			$('#avto-results-section').hide();
+			$('#avto-generate-btn').prop('disabled', true);
+		}
+	};
+
+	// Initialize when document is ready
+	$(document).ready(function() {
+		AVTOModal.init();
+	});
+
+})(jQuery);

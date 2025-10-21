@@ -1,0 +1,14 @@
+{
+  "core": null,
+  "phpVersion": "8.4",
+  "plugins": [
+    ".",
+    "https://downloads.wordpress.org/plugin/woocommerce.10.2.2.zip"
+  ],
+  "config": {
+    "AVTO_GEMINI_API_KEY": "AIzaSyBbgJ70WFFo3uyHlGlbAokM0ob7TtohbKc",
+		"WP_DEBUG": true,
+		"SCRIPT_DEBUG": true
+  },
+  "port": 8888
+}
