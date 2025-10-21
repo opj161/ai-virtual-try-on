@@ -366,13 +366,44 @@
 		userImageFile: null,
 		selectedClothingId: null,
 		selectedClothingFile: null,
+		defaultUserImageId: null, // Store default image ID for logged-in users
 
 		/**
 		 * Initialize core functionality
 		 */
 		init: function() {
 			this.bindEvents();
+			this.loadDefaultUserImage();
 			this.checkGenerateButtonState();
+		},
+
+		/**
+		 * Load and display default user image if available
+		 */
+		loadDefaultUserImage: function() {
+			// Check if we have product data with default image
+			if (typeof avtoProductData !== 'undefined' && avtoProductData.defaultUserImage) {
+				const defaultImage = avtoProductData.defaultUserImage;
+				
+				// Store the default image ID
+				this.defaultUserImageId = defaultImage.id;
+				
+				// Display the default image in preview
+				$('#avto-preview-img').attr('src', defaultImage.url);
+				$('.avto-file-label').hide();
+				$('#avto-image-preview').fadeIn(300);
+				
+				// Add a notice that default image is being used
+				if (!$('.avto-default-image-notice').length) {
+					$('#avto-image-preview').prepend(
+						'<div class="avto-default-image-notice" style="background: #e7f7ff; border: 1px solid #00a0d2; padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 4px; font-size: 0.85rem;">' +
+							'<strong>Using your default try-on photo.</strong> Upload a new image to use a different photo.' +
+						'</div>'
+					);
+				}
+				
+				console.log('AVTO: Loaded default user image', defaultImage);
+			}
 		},
 
 		/**
@@ -442,6 +473,9 @@
 		handleFileSelect: function(e) {
 			const file = e.target.files[0];
 			if (file) {
+				// Clear default image ID when user uploads a new file
+				this.defaultUserImageId = null;
+				$('.avto-default-image-notice').remove();
 				this.validateAndPreviewFile(file);
 			}
 		},
@@ -525,8 +559,18 @@
 			e.preventDefault();
 			this.userImageFile = null;
 			$('#avto-user-image').val('');
-			$('#avto-image-preview').hide();
-			$('.avto-file-label').fadeIn(300);
+			$('.avto-default-image-notice').remove();
+			
+			// Check if we should restore default image
+			if (typeof avtoProductData !== 'undefined' && avtoProductData.defaultUserImage) {
+				// Restore default image
+				this.loadDefaultUserImage();
+			} else {
+				// No default image, show upload prompt
+				$('#avto-image-preview').hide();
+				$('.avto-file-label').fadeIn(300);
+			}
+			
 			this.checkGenerateButtonState();
 		},
 
@@ -554,7 +598,9 @@
 		 */
 		checkGenerateButtonState: function() {
 			const $generateBtn = $('#avto-generate-btn');
-			if (this.userImageFile && this.selectedClothingId) {
+			// Enable button if we have (user file OR default image) AND clothing selected
+			const hasImage = this.userImageFile || this.defaultUserImageId;
+			if (hasImage && this.selectedClothingId) {
 				$generateBtn.prop('disabled', false);
 			} else {
 				$generateBtn.prop('disabled', true);
@@ -567,8 +613,8 @@
 		handleGenerate: function(e) {
 			e.preventDefault();
 
-			// Validate inputs
-			if (!this.userImageFile) {
+			// Validate inputs - check if we have either a new file OR default image
+			if (!this.userImageFile && !this.defaultUserImageId) {
 				alert('Please upload your photo first.');
 				return;
 			}
@@ -585,7 +631,15 @@
 			const formData = new FormData();
 			formData.append('action', 'avto_generate_image');
 			formData.append('nonce', avtoAjax.nonce);
-			formData.append('user_image', this.userImageFile);
+			
+			// Send either new image file OR existing image ID
+			if (this.userImageFile) {
+				// New upload
+				formData.append('user_image', this.userImageFile);
+			} else if (this.defaultUserImageId) {
+				// Use default image ID
+				formData.append('user_image_id', this.defaultUserImageId);
+			}
 
 			// Check if we're in WooCommerce mode (modal) or shortcode mode
 			const $generateBtn = $('#avto-generate-btn');
@@ -730,10 +784,12 @@
 			this.userImageFile = null;
 			this.selectedClothingId = null;
 			this.selectedClothingFile = null;
+			this.defaultUserImageId = null;
 
 			$('#avto-user-image').val('');
 			$('#avto-image-preview').hide();
 			$('.avto-file-label').show();
+			$('.avto-default-image-notice').remove();
 			$('.avto-clothing-item').removeClass('selected').attr('aria-pressed', 'false');
 			$('#avto-results-section').hide();
 			$('#avto-generate-btn').prop('disabled', true);

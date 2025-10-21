@@ -39,6 +39,9 @@ function avto_uninstall_cleanup() {
 	delete_option( 'avto_brand_primary_color' );
 	delete_option( 'avto_brand_secondary_color' );
 	
+	// Delete version tracking option (v2.3+)
+	delete_option( 'avto_version' );
+	
 	// Delete any transients
 	delete_transient( 'avto_api_key_notice' );
 	
@@ -54,6 +57,27 @@ function avto_uninstall_cleanup() {
 		$wpdb->prepare(
 			"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
 			$wpdb->esc_like( '_transient_timeout_avto_' ) . '%'
+		)
+	);
+	
+	// Delete all avto_tryon_session posts (v2.3+)
+	$session_posts = get_posts( array(
+		'post_type'      => 'avto_tryon_session',
+		'posts_per_page' => -1,
+		'post_status'    => 'any',
+		'fields'         => 'ids',
+	) );
+	
+	foreach ( $session_posts as $post_id ) {
+		// Force delete (bypass trash)
+		wp_delete_post( $post_id, true );
+	}
+	
+	// Delete all user meta for default user images (v2.3+)
+	$wpdb->query( 
+		$wpdb->prepare(
+			"DELETE FROM {$wpdb->usermeta} WHERE meta_key = %s",
+			'_avto_default_user_image_id'
 		)
 	);
 	

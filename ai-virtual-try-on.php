@@ -3,7 +3,7 @@
  * Plugin Name:       AI Virtual Try-On
  * Plugin URI:        https://github.com/yourusername/ai-virtual-try-on
  * Description:       AI-powered virtual try-on experience using Google's Gemini 2.5 Flash Image API. WooCommerce integration for seamless product page try-ons. Supports JPEG, PNG, WebP, HEIC, and HEIF formats. Fully customizable via admin settings.
- * Version:           2.2.2
+ * Version:           2.3.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Requires Plugins:  woocommerce
@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Plugin Constants
  */
-define( 'AVTO_VERSION', '2.2.2' );
+define( 'AVTO_VERSION', '2.3.0' );
 define( 'AVTO_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AVTO_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AVTO_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -90,7 +90,15 @@ function avto_activate() {
 		set_transient( 'avto_api_key_notice', true, 60 );
 	}
 
-	// Flush rewrite rules (for future enhancements)
+	// Register CPT and custom endpoints to ensure rewrite rules are available
+	avto_register_tryon_session_cpt();
+	
+	// Register My Account endpoint if WooCommerce is active
+	if ( class_exists( 'WooCommerce' ) ) {
+		add_rewrite_endpoint( 'try-on-history', EP_PAGES );
+	}
+
+	// Flush rewrite rules to activate new endpoints
 	flush_rewrite_rules();
 }
 register_activation_hook( __FILE__, 'avto_activate' );
@@ -111,11 +119,14 @@ function avto_upgrade_routine( $from_version ) {
 		}
 	}
 	
-	// Future upgrades can add more version checks here
-	// Example:
-	// if ( version_compare( $from_version, '3.0.0', '<' ) ) {
-	//     // Migration logic for 3.0.0
-	// }
+	// Upgrade to 2.3.0 - No database migrations needed
+	// New features: User Try-On History (CPT) and Default User Images (user meta)
+	// Both are created on-demand, no pre-existing data to migrate
+	if ( version_compare( $from_version, '2.3.0', '<' ) ) {
+		// Ensure rewrite rules are flushed for new try-on-history endpoint
+		// This is also handled in activation, but adding here for manual upgrades
+		flush_rewrite_rules();
+	}
 	
 	// Set upgrade notice transient
 	set_transient( 'avto_upgraded_notice', AVTO_VERSION, 60 );
@@ -134,6 +145,103 @@ function avto_deactivate() {
 	flush_rewrite_rules();
 }
 register_deactivation_hook( __FILE__, 'avto_deactivate' );
+
+/**
+ * Register Custom Post Type for Try-On History
+ * 
+ * Each post represents a successful try-on generation session.
+ * Uses the post_author field to associate with user (enables simple querying).
+ * 
+ * @since 2.3.0
+ */
+function avto_register_tryon_session_cpt() {
+	$args = array(
+		'public'              => false,
+		'publicly_queryable'  => false,
+		'show_ui'             => false,
+		'show_in_menu'        => false,
+		'show_in_nav_menus'   => false,
+		'show_in_admin_bar'   => false,
+		'exclude_from_search' => true,
+		'has_archive'         => false,
+		'rewrite'             => false,
+		'capability_type'     => 'post',
+		'supports'            => array( 'title', 'author' ),
+		'labels'              => array(
+			'name'          => __( 'Try-On Sessions', 'avto' ),
+			'singular_name' => __( 'Try-On Session', 'avto' ),
+		),
+	);
+	
+	register_post_type( 'avto_tryon_session', $args );
+}
+add_action( 'init', 'avto_register_tryon_session_cpt' );
+
+/**
+ * Save Try-On History After Successful Generation
+ * 
+ * Creates a CPT post to track user's try-on history for logged-in users.
+ * Stores metadata for product, generated image, user photo, and clothing image.
+ * 
+ * @since 2.3.0
+ * 
+ * @param int    $generated_attach_id  Attachment ID of the generated image
+ * @param string $image_url            URL of the generated image (unused but kept for backward compatibility)
+ * @param int    $product_id           WooCommerce product ID (0 if shortcode mode)
+ * @param int    $user_photo_attach_id Attachment ID of user's uploaded photo
+ * @param int    $clothing_image_id    Attachment ID of clothing image
+ */
+function avto_save_tryon_history( $generated_attach_id, $image_url, $product_id, $user_photo_attach_id, $clothing_image_id ) {
+	// Only save history for logged-in users
+	if ( ! is_user_logged_in() ) {
+		return;
+	}
+	
+	$user_id = get_current_user_id();
+	
+	// Prepare post title
+	$post_title = __( 'Try-On Session', 'avto' );
+	
+	// If we have a product ID, include product name in title
+	if ( $product_id > 0 && function_exists( 'wc_get_product' ) ) {
+		$product = wc_get_product( $product_id );
+		if ( $product ) {
+			$post_title = sprintf(
+				/* translators: %s: product name */
+				__( 'Try-On: %s', 'avto' ),
+				$product->get_name()
+			);
+		}
+	}
+	
+	// Create the history post
+	$post_data = array(
+		'post_author' => $user_id,
+		'post_title'  => $post_title,
+		'post_type'   => 'avto_tryon_session',
+		'post_status' => 'publish', // Private CPT, so 'publish' is safe
+	);
+	
+	$session_post_id = wp_insert_post( $post_data );
+	
+	// If post creation failed, log error and return
+	if ( is_wp_error( $session_post_id ) || ! $session_post_id ) {
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'AVTO: Failed to create try-on history post: ' . ( is_wp_error( $session_post_id ) ? $session_post_id->get_error_message() : 'Unknown error' ) );
+		}
+		return;
+	}
+	
+	// Save meta data
+	update_post_meta( $session_post_id, '_product_id', absint( $product_id ) );
+	update_post_meta( $session_post_id, '_generated_image_id', absint( $generated_attach_id ) );
+	update_post_meta( $session_post_id, '_user_image_id', absint( $user_photo_attach_id ) );
+	update_post_meta( $session_post_id, '_clothing_image_id', absint( $clothing_image_id ) );
+	
+	// Allow other plugins to hook into history creation
+	do_action( 'avto_history_saved', $session_post_id, $user_id, $product_id );
+}
+add_action( 'avto_after_generation_success', 'avto_save_tryon_history', 10, 5 );
 
 /**
  * Comprehensive Admin Notice System
@@ -371,16 +479,36 @@ function avto_localize_product_data() {
 		error_log( 'AVTO: SUCCESS - Localizing product data for product ID ' . $product->get_id() );
 	}
 	
+	// Prepare product data
+	$product_data = array(
+		'productId'    => (int) $product->get_id(),
+		'ajaxUrl'      => admin_url( 'admin-ajax.php' ),
+		'nonce'        => wp_create_nonce( 'avto-product-images-nonce' ),
+		'fetchViaAjax' => true,
+	);
+	
+	// Add default user image if logged in and image is set
+	if ( is_user_logged_in() ) {
+		$user_id          = get_current_user_id();
+		$default_image_id = get_user_meta( $user_id, '_avto_default_user_image_id', true );
+		
+		if ( $default_image_id ) {
+			$default_image_url = wp_get_attachment_image_url( $default_image_id, 'large' );
+			
+			if ( $default_image_url ) {
+				$product_data['defaultUserImage'] = array(
+					'id'  => (int) $default_image_id,
+					'url' => $default_image_url,
+				);
+			}
+		}
+	}
+	
 	// Localize product data
 	wp_localize_script(
 		'avto-frontend-script',
 		'avtoProductData',
-		array(
-			'productId'    => (int) $product->get_id(),
-			'ajaxUrl'      => admin_url( 'admin-ajax.php' ),
-			'nonce'        => wp_create_nonce( 'avto-product-images-nonce' ),
-			'fetchViaAjax' => true,
-		)
+		$product_data
 	);
 }
 add_action( 'wp_footer', 'avto_localize_product_data', 5 ); // Priority 5 to run early in footer
@@ -395,4 +523,5 @@ require_once AVTO_PLUGIN_DIR . 'includes/avto-admin.php';
 // WooCommerce integration (only load if WooCommerce exists)
 if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ), true ) ) {
 	require_once AVTO_PLUGIN_DIR . 'includes/avto-woocommerce.php';
+	require_once AVTO_PLUGIN_DIR . 'includes/avto-my-account.php';
 }

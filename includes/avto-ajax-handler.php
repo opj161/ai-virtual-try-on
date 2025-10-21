@@ -48,73 +48,121 @@ function avto_handle_generate_image_request() {
 		) );
 	}
 
-	// 4. VALIDATE FILE UPLOAD
-	if ( ! isset( $_FILES['user_image'] ) || $_FILES['user_image']['error'] !== UPLOAD_ERR_OK ) {
-		wp_send_json_error( array(
-			'message' => __( 'File upload error. Please try again.', 'avto' ),
-		) );
-	}
-
-	$file = $_FILES['user_image'];
-
-	// Validate MIME type - check both client-provided and actual file content
-	// Gemini API supports: PNG, JPEG, WEBP, HEIC, HEIF (but NOT AVIF)
-	$allowed_types = array( 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif' );
-	$file_type = wp_check_filetype( $file['name'] );
+	// 4. HANDLE USER IMAGE - Either new upload OR existing attachment ID
+	$attachment_id = 0;
+	$user_image_path = '';
 	
-	// First check: client-provided MIME type (quick, but unreliable)
-	if ( ! in_array( $file['type'], $allowed_types, true ) ) {
-		wp_send_json_error( array(
-			'message' => __( 'Invalid file type. Please upload a JPG, PNG, WebP, HEIC, or HEIF image.', 'avto' ),
-		) );
-	}
-	
-	// Second check: actual file content MIME type (reliable, prevents unsupported format issues)
-	// This is critical because browsers may convert images to formats not supported by Gemini API
-	$temp_path = $file['tmp_name'];
-	$finfo = finfo_open( FILEINFO_MIME_TYPE );
-	$actual_mime = finfo_file( $finfo, $temp_path );
-	finfo_close( $finfo );
-	
-	if ( ! in_array( $actual_mime, $allowed_types, true ) ) {
-		wp_send_json_error( array(
-			'message' => sprintf( 
-				/* translators: %s: detected MIME type */
-				__( 'Unsupported image format detected (%s). Supported formats: JPG, PNG, WebP, HEIC, and HEIF. AVIF format is not supported by the AI service.', 'avto' ),
-				$actual_mime 
-			),
-		) );
-	}
+	// Check if user is using existing default image
+	if ( isset( $_POST['user_image_id'] ) && ! empty( $_POST['user_image_id'] ) ) {
+		// Using existing image from Media Library
+		$attachment_id = absint( $_POST['user_image_id'] );
+		
+		// Security: Verify attachment exists and belongs to current user
+		$attachment = get_post( $attachment_id );
+		
+		if ( ! $attachment || 'attachment' !== $attachment->post_type ) {
+			wp_send_json_error( array(
+				'message' => __( 'Default user image not found. Please upload a new photo.', 'avto' ),
+			) );
+		}
+		
+		// Verify attachment ownership - must be uploaded by current user
+		if ( absint( $attachment->post_author ) !== get_current_user_id() ) {
+			wp_send_json_error( array(
+				'message' => __( 'You do not have permission to use this image.', 'avto' ),
+			) );
+		}
+		
+		// Get file path
+		$user_image_path = get_attached_file( $attachment_id );
+		
+		if ( ! $user_image_path || ! file_exists( $user_image_path ) ) {
+			wp_send_json_error( array(
+				'message' => __( 'Default user image not found. Please upload a new photo.', 'avto' ),
+			) );
+		}
+		
+		// Validate MIME type of existing file
+		$finfo = finfo_open( FILEINFO_MIME_TYPE );
+		$actual_mime = finfo_file( $finfo, $user_image_path );
+		finfo_close( $finfo );
+		
+		$allowed_types = array( 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif' );
+		if ( ! in_array( $actual_mime, $allowed_types, true ) ) {
+			wp_send_json_error( array(
+				'message' => __( 'Default image has invalid format. Please upload a new photo.', 'avto' ),
+			) );
+		}
+		
+	} else {
+		// New file upload - original validation logic
+		if ( ! isset( $_FILES['user_image'] ) || $_FILES['user_image']['error'] !== UPLOAD_ERR_OK ) {
+			wp_send_json_error( array(
+				'message' => __( 'File upload error. Please try again.', 'avto' ),
+			) );
+		}
 
-	// Validate file size - get max size from settings
-	$max_size_mb = get_option( 'avto_max_file_size', 5 );
-	$max_size = $max_size_mb * 1024 * 1024; // Convert MB to bytes
-	if ( $file['size'] > $max_size ) {
-		wp_send_json_error( array(
-			'message' => sprintf( __( 'File size must be less than %dMB.', 'avto' ), $max_size_mb ),
-		) );
-	}
+		$file = $_FILES['user_image'];
 
-	// 4. USE WORDPRESS MEDIA LIBRARY
-	require_once ABSPATH . 'wp-admin/includes/image.php';
-	require_once ABSPATH . 'wp-admin/includes/file.php';
-	require_once ABSPATH . 'wp-admin/includes/media.php';
+		// Validate MIME type - check both client-provided and actual file content
+		// Gemini API supports: PNG, JPEG, WEBP, HEIC, HEIF (but NOT AVIF)
+		$allowed_types = array( 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif' );
+		$file_type = wp_check_filetype( $file['name'] );
+		
+		// First check: client-provided MIME type (quick, but unreliable)
+		if ( ! in_array( $file['type'], $allowed_types, true ) ) {
+			wp_send_json_error( array(
+				'message' => __( 'Invalid file type. Please upload a JPG, PNG, WebP, HEIC, or HEIF image.', 'avto' ),
+			) );
+		}
+		
+		// Second check: actual file content MIME type (reliable, prevents unsupported format issues)
+		// This is critical because browsers may convert images to formats not supported by Gemini API
+		$temp_path = $file['tmp_name'];
+		$finfo = finfo_open( FILEINFO_MIME_TYPE );
+		$actual_mime = finfo_file( $finfo, $temp_path );
+		finfo_close( $finfo );
+		
+		if ( ! in_array( $actual_mime, $allowed_types, true ) ) {
+			wp_send_json_error( array(
+				'message' => sprintf( 
+					/* translators: %s: detected MIME type */
+					__( 'Unsupported image format detected (%s). Supported formats: JPG, PNG, WebP, HEIC, and HEIF. AVIF format is not supported by the AI service.', 'avto' ),
+					$actual_mime 
+				),
+			) );
+		}
 
-	$attachment_id = media_handle_upload( 'user_image', 0 );
+		// Validate file size - get max size from settings
+		$max_size_mb = get_option( 'avto_max_file_size', 5 );
+		$max_size = $max_size_mb * 1024 * 1024; // Convert MB to bytes
+		if ( $file['size'] > $max_size ) {
+			wp_send_json_error( array(
+				'message' => sprintf( __( 'File size must be less than %dMB.', 'avto' ), $max_size_mb ),
+			) );
+		}
 
-	if ( is_wp_error( $attachment_id ) ) {
-		wp_send_json_error( array(
-			'message' => $attachment_id->get_error_message(),
-		) );
-	}
+		// USE WORDPRESS MEDIA LIBRARY
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/media.php';
 
-	// Get the user image file path
-	$user_image_path = get_attached_file( $attachment_id );
-	
-	if ( ! $user_image_path || ! file_exists( $user_image_path ) ) {
-		wp_send_json_error( array(
-			'message' => __( 'Failed to process uploaded image. Please try again.', 'avto' ),
-		) );
+		$attachment_id = media_handle_upload( 'user_image', 0 );
+
+		if ( is_wp_error( $attachment_id ) ) {
+			wp_send_json_error( array(
+				'message' => $attachment_id->get_error_message(),
+			) );
+		}
+
+		// Get the user image file path
+		$user_image_path = get_attached_file( $attachment_id );
+		
+		if ( ! $user_image_path || ! file_exists( $user_image_path ) ) {
+			wp_send_json_error( array(
+				'message' => __( 'Failed to process uploaded image. Please try again.', 'avto' ),
+			) );
+		}
 	}
 
 	// 5. GET CLOTHING IMAGE PATH - Different logic for WooCommerce vs Shortcode modes
@@ -254,7 +302,7 @@ function avto_handle_generate_image_request() {
 	// Allow developers to hook before API call
 	do_action( 'avto_before_api_call', $user_image_path, $clothing_image_path, $product_id, $clothing_image_id );
 	
-	$result = avto_call_gemini_api( $user_image_path, $clothing_image_path, $product_id );
+	$result = avto_call_gemini_api( $user_image_path, $clothing_image_path, $product_id, $attachment_id, $clothing_image_id );
 
 	// Clean up temporary file (only needed in shortcode mode)
 	if ( ! $is_wc_mode && file_exists( $clothing_image_path ) ) {
@@ -290,9 +338,11 @@ add_action( 'wp_ajax_nopriv_avto_generate_image', 'avto_handle_generate_image_re
  * @param string $user_image_path Path to user's uploaded image
  * @param string $clothing_image_path Path to clothing item image
  * @param int $product_id Optional. WooCommerce product ID (0 for shortcode mode)
+ * @param int $user_photo_attach_id Optional. Attachment ID of user's uploaded photo (for history tracking)
+ * @param int $clothing_image_id Optional. Attachment ID of clothing image (for history tracking)
  * @return array|WP_Error Array with image_url on success, WP_Error on failure
  */
-function avto_call_gemini_api( $user_image_path, $clothing_image_path, $product_id = 0 ) {
+function avto_call_gemini_api( $user_image_path, $clothing_image_path, $product_id = 0, $user_photo_attach_id = 0, $clothing_image_id = 0 ) {
 	
 	// Check if API key is configured
 	if ( ! defined( 'AVTO_GEMINI_API_KEY' ) || empty( AVTO_GEMINI_API_KEY ) ) {
@@ -515,7 +565,8 @@ function avto_call_gemini_api( $user_image_path, $clothing_image_path, $product_
 	$image_url = wp_get_attachment_url( $attach_id );
 
 	// Allow developers to hook after successful generation
-	do_action( 'avto_after_generation_success', $attach_id, $image_url, $product_id );
+	// Pass all necessary IDs for history tracking and extensibility
+	do_action( 'avto_after_generation_success', $attach_id, $image_url, $product_id, $user_photo_attach_id, $clothing_image_id );
 
 	// Return the image URL
 	return apply_filters(
