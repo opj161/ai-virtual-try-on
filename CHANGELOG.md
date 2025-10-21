@@ -5,6 +5,60 @@ All notable changes to the AI Virtual Try-On WordPress Plugin will be documented
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2025-10-22
+
+### Added - Global Rate Limiting 🚦
+- **Site-Wide Rate Limiting** - New optional feature to control total API usage across all users
+  - Configure maximum total requests allowed site-wide in a time window
+  - Works in addition to existing per-user/IP rate limits
+  - Default: 100 requests per hour (disabled by default)
+  - Admin setting toggle to enable/disable global limits
+  
+- **Dashboard Widget** - Real-time rate limit monitoring for administrators
+  - Visual progress bar showing current global usage vs. limit
+  - Color-coded status indicators (Green/Yellow/Orange/Red)
+  - Displays both global and per-user limit configurations
+  - Only visible when global rate limiting is enabled
+  - Quick link to adjust settings
+
+- **Enhanced Admin Notices**
+  - Separate warnings for per-user violations vs. global limit reached
+  - Critical error notice when site-wide limit is hit
+  - Improved messaging distinguishing between limit types
+
+### Changed
+- **Rate Limit Settings UI** - Reorganized Advanced tab for clarity
+  - Separated "Per-User Rate Limiting" section with clear labels
+  - New "Global (Site-Wide) Rate Limiting" section
+  - Better descriptions explaining the difference between limit types
+  - Updated field labels for clarity (e.g., "Per-User Limit" vs "Global Limit")
+
+### Technical Changes
+- **Rate Limiting Logic** (`includes/avto-ajax-handler.php`)
+  - Enhanced `avto_check_rate_limit()` with two-tier checking
+  - Checks global limit first (if enabled), then per-user limit
+  - New global transient key: `avto_global_rate_limit`
+  - New action hook: `avto_global_rate_limit_exceeded`
+  
+- **Admin Settings** (`includes/avto-admin.php`)
+  - New settings: `avto_enable_global_rate_limit`, `avto_global_rate_limit_requests`, `avto_global_rate_limit_window`
+  - New dashboard widget: `avto_add_dashboard_widget()`
+  - New helper function: `avto_format_seconds()` for human-readable time displays
+  
+- **Upgrade Routine** (`ai-virtual-try-on.php`)
+  - Version 2.4.0 upgrade adds default values for new global rate limit options
+  - Backward compatible - existing per-user rate limits unaffected
+
+### Documentation
+- Added comprehensive `RATE-LIMITING.md` guide
+  - Detailed explanation of both rate limiting tiers
+  - Recommended settings for different site sizes
+  - Cost estimation examples
+  - Developer hooks and customization options
+  - Troubleshooting guide
+
+---
+
 ## [2.3.4] - 2025-10-22
 
 ### Fixed - Modal Styling & Behavior 🐛

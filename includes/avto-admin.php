@@ -82,7 +82,7 @@ function avto_register_settings() {
 		'default'           => 86400,
 	) );
 	
-	// Rate limiting settings
+	// Rate limiting settings (per-user)
 	register_setting( 'avto_settings_group', 'avto_rate_limit_requests', array(
 		'type'              => 'integer',
 		'sanitize_callback' => 'absint',
@@ -93,6 +93,25 @@ function avto_register_settings() {
 		'type'              => 'integer',
 		'sanitize_callback' => 'absint',
 		'default'           => 60,
+	) );
+	
+	// Global rate limiting settings (site-wide)
+	register_setting( 'avto_settings_group', 'avto_enable_global_rate_limit', array(
+		'type'              => 'boolean',
+		'sanitize_callback' => 'rest_sanitize_boolean',
+		'default'           => false,
+	) );
+	
+	register_setting( 'avto_settings_group', 'avto_global_rate_limit_requests', array(
+		'type'              => 'integer',
+		'sanitize_callback' => 'absint',
+		'default'           => 100,
+	) );
+	
+	register_setting( 'avto_settings_group', 'avto_global_rate_limit_window', array(
+		'type'              => 'integer',
+		'sanitize_callback' => 'absint',
+		'default'           => 3600,
 	) );
 	
 	register_setting( 'avto_settings_group', 'avto_debug_mode', array(
@@ -627,8 +646,18 @@ function avto_render_settings_page() {
 						</td>
 					</tr>
 					<tr>
+						<th scope="row" colspan="2">
+							<h3 style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+								<?php esc_html_e( 'Per-User Rate Limiting', 'avto' ); ?>
+							</h3>
+							<p class="description">
+								<?php esc_html_e( 'Limit how many requests each individual user or IP address can make.', 'avto' ); ?>
+							</p>
+						</th>
+					</tr>
+					<tr>
 						<th scope="row">
-							<label for="avto_rate_limit_requests"><?php esc_html_e( 'Rate Limit (requests)', 'avto' ); ?></label>
+							<label for="avto_rate_limit_requests"><?php esc_html_e( 'Per-User Limit (requests)', 'avto' ); ?></label>
 						</th>
 						<td>
 							<input 
@@ -640,13 +669,13 @@ function avto_render_settings_page() {
 								max="100" 
 								class="small-text">
 							<p class="description">
-								<?php esc_html_e( 'Maximum number of requests allowed per time window.', 'avto' ); ?>
+								<?php esc_html_e( 'Maximum requests per user/IP in the time window below.', 'avto' ); ?>
 							</p>
 						</td>
 					</tr>
 					<tr>
 						<th scope="row">
-							<label for="avto_rate_limit_window"><?php esc_html_e( 'Rate Limit Window (seconds)', 'avto' ); ?></label>
+							<label for="avto_rate_limit_window"><?php esc_html_e( 'Per-User Time Window (seconds)', 'avto' ); ?></label>
 						</th>
 						<td>
 							<input 
@@ -658,7 +687,72 @@ function avto_render_settings_page() {
 								max="3600" 
 								class="small-text">
 							<p class="description">
-								<?php esc_html_e( 'Time window for rate limiting (60 = 1 minute, 3600 = 1 hour).', 'avto' ); ?>
+								<?php esc_html_e( 'Time window for per-user rate limiting (60 = 1 minute, 3600 = 1 hour).', 'avto' ); ?>
+							</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row" colspan="2">
+							<h3 style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+								<?php esc_html_e( 'Global (Site-Wide) Rate Limiting', 'avto' ); ?>
+							</h3>
+							<p class="description">
+								<?php esc_html_e( 'Limit total requests across ALL users on your entire site. Useful for managing API costs.', 'avto' ); ?>
+							</p>
+						</th>
+					</tr>
+					<tr>
+						<th scope="row">
+							<?php esc_html_e( 'Enable Global Limit', 'avto' ); ?>
+						</th>
+						<td>
+							<label>
+								<input 
+									type="checkbox" 
+									name="avto_enable_global_rate_limit" 
+									id="avto_enable_global_rate_limit" 
+									value="1" 
+									<?php checked( get_option( 'avto_enable_global_rate_limit', false ), true ); ?>>
+								<?php esc_html_e( 'Enable site-wide rate limiting (applies to all users combined)', 'avto' ); ?>
+							</label>
+							<p class="description">
+								<?php esc_html_e( 'When enabled, limits total requests from all users. Works in addition to per-user limits.', 'avto' ); ?>
+							</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row">
+							<label for="avto_global_rate_limit_requests"><?php esc_html_e( 'Global Limit (requests)', 'avto' ); ?></label>
+						</th>
+						<td>
+							<input 
+								type="number" 
+								name="avto_global_rate_limit_requests" 
+								id="avto_global_rate_limit_requests" 
+								value="<?php echo esc_attr( get_option( 'avto_global_rate_limit_requests', 100 ) ); ?>" 
+								min="10" 
+								max="10000" 
+								class="small-text">
+							<p class="description">
+								<?php esc_html_e( 'Maximum total requests from all users combined in the time window below.', 'avto' ); ?>
+							</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row">
+							<label for="avto_global_rate_limit_window"><?php esc_html_e( 'Global Time Window (seconds)', 'avto' ); ?></label>
+						</th>
+						<td>
+							<input 
+								type="number" 
+								name="avto_global_rate_limit_window" 
+								id="avto_global_rate_limit_window" 
+								value="<?php echo esc_attr( get_option( 'avto_global_rate_limit_window', 3600 ) ); ?>" 
+								min="60" 
+								max="86400" 
+								class="small-text">
+							<p class="description">
+								<?php esc_html_e( 'Time window for global rate limiting (3600 = 1 hour, 86400 = 1 day).', 'avto' ); ?>
 							</p>
 						</td>
 					</tr>
@@ -764,3 +858,128 @@ function avto_enqueue_admin_scripts( $hook ) {
 	wp_enqueue_script( 'jquery' );
 }
 add_action( 'admin_enqueue_scripts', 'avto_enqueue_admin_scripts' );
+
+/**
+ * Add Rate Limit Status Dashboard Widget
+ * 
+ * Shows current rate limit usage for administrators.
+ * 
+ * @since 2.4.0
+ */
+function avto_add_dashboard_widget() {
+	// Only show to administrators
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+	
+	// Only show if global rate limiting is enabled
+	if ( ! get_option( 'avto_enable_global_rate_limit', false ) ) {
+		return;
+	}
+	
+	wp_add_dashboard_widget(
+		'avto_rate_limit_status',
+		__( 'AI Virtual Try-On - Rate Limit Status', 'avto' ),
+		'avto_render_dashboard_widget'
+	);
+}
+add_action( 'wp_dashboard_setup', 'avto_add_dashboard_widget' );
+
+/**
+ * Render the dashboard widget content
+ */
+function avto_render_dashboard_widget() {
+	$global_enabled = get_option( 'avto_enable_global_rate_limit', false );
+	
+	if ( ! $global_enabled ) {
+		echo '<p>' . esc_html__( 'Global rate limiting is disabled.', 'avto' ) . '</p>';
+		return;
+	}
+	
+	// Get settings
+	$global_max = (int) get_option( 'avto_global_rate_limit_requests', 100 );
+	$global_window = (int) get_option( 'avto_global_rate_limit_window', 3600 );
+	$per_user_max = (int) get_option( 'avto_rate_limit_requests', 10 );
+	$per_user_window = (int) get_option( 'avto_rate_limit_window', 60 );
+	
+	// Get current usage
+	$global_count = (int) get_transient( 'avto_global_rate_limit' );
+	$global_count = ( false === $global_count ) ? 0 : $global_count;
+	
+	// Calculate percentage
+	$percentage = ( $global_max > 0 ) ? ( $global_count / $global_max ) * 100 : 0;
+	
+	// Determine status color
+	if ( $percentage >= 90 ) {
+		$status_color = '#dc3232'; // Red
+		$status_text = __( 'Critical', 'avto' );
+	} elseif ( $percentage >= 70 ) {
+		$status_color = '#f56e28'; // Orange
+		$status_text = __( 'Warning', 'avto' );
+	} elseif ( $percentage >= 50 ) {
+		$status_color = '#ffb900'; // Yellow
+		$status_text = __( 'Moderate', 'avto' );
+	} else {
+		$status_color = '#46b450'; // Green
+		$status_text = __( 'Healthy', 'avto' );
+	}
+	
+	?>
+	<div style="margin: 10px 0;">
+		<h4 style="margin: 0 0 10px 0;"><?php esc_html_e( 'Global Usage', 'avto' ); ?></h4>
+		<div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+			<span><strong><?php echo absint( $global_count ); ?></strong> / <?php echo absint( $global_max ); ?> requests</span>
+			<span style="color: <?php echo esc_attr( $status_color ); ?>; font-weight: bold;">
+				<?php echo esc_html( $status_text ); ?>
+			</span>
+		</div>
+		<div style="background: #f0f0f1; height: 20px; border-radius: 3px; overflow: hidden;">
+			<div style="background: <?php echo esc_attr( $status_color ); ?>; width: <?php echo esc_attr( $percentage ); ?>%; height: 100%; transition: width 0.3s;"></div>
+		</div>
+		<p style="margin: 10px 0 0 0; font-size: 12px; color: #646970;">
+			<?php
+			printf(
+				/* translators: %s: time window in human readable format */
+				esc_html__( 'Time window: %s', 'avto' ),
+				esc_html( avto_format_seconds( $global_window ) )
+			);
+			?>
+		</p>
+	</div>
+	
+	<div style="margin: 20px 0 10px 0; padding-top: 15px; border-top: 1px solid #f0f0f1;">
+		<h4 style="margin: 0 0 10px 0;"><?php esc_html_e( 'Per-User Limits', 'avto' ); ?></h4>
+		<p style="margin: 5px 0; font-size: 13px;">
+			<strong><?php echo absint( $per_user_max ); ?></strong> requests per 
+			<strong><?php echo esc_html( avto_format_seconds( $per_user_window ) ); ?></strong>
+		</p>
+	</div>
+	
+	<p style="margin: 15px 0 0 0;">
+		<a href="<?php echo esc_url( admin_url( 'options-general.php?page=avto-settings#advanced' ) ); ?>" class="button button-small">
+			<?php esc_html_e( 'Adjust Settings', 'avto' ); ?>
+		</a>
+	</p>
+	<?php
+}
+
+/**
+ * Format seconds into human-readable time
+ * 
+ * @param int $seconds Number of seconds
+ * @return string Human-readable time
+ */
+function avto_format_seconds( $seconds ) {
+	if ( $seconds >= 86400 ) {
+		$days = floor( $seconds / 86400 );
+		return sprintf( _n( '%d day', '%d days', $days, 'avto' ), $days );
+	} elseif ( $seconds >= 3600 ) {
+		$hours = floor( $seconds / 3600 );
+		return sprintf( _n( '%d hour', '%d hours', $hours, 'avto' ), $hours );
+	} elseif ( $seconds >= 60 ) {
+		$minutes = floor( $seconds / 60 );
+		return sprintf( _n( '%d minute', '%d minutes', $minutes, 'avto' ), $minutes );
+	} else {
+		return sprintf( _n( '%d second', '%d seconds', $seconds, 'avto' ), $seconds );
+	}
+}

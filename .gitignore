@@ -1,18 +1,8 @@
-COMPLETE-REVIEW-SUMMARY.md
-DEVELOPMENT_SUMMARY.md
-TESTING.md
-COMPLETE-REVIEW-SUMMARY.md
-UNIFORM-GRID-IMPLEMENTATION.md
-ai-virtual-try-on.xml
-AUDIT-REPORT.md
-ai-virtual-try-on/IMPLEMENTATION-COMPLETENESS-AUDIT.md
-WOOCOMMERCE-TAB-FIX.md
-IMPLEMENTATION-COMPLETENESS-AUDIT.md
-gemini-api-docs.md
-gemini-image-understanding.md
-gemini-troubleshooting.md
-wp-plugin-handbook.md
-woocommerce-extensions.xml
+# Markdown documentation files
+*.md
+
+# XML documentation files
+*.xml
 
 
 # Operating System files

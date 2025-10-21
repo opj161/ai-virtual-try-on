@@ -3,7 +3,7 @@
  * Plugin Name:       AI Virtual Try-On
  * Plugin URI:        https://github.com/yourusername/ai-virtual-try-on
  * Description:       AI-powered virtual try-on experience using Google's Gemini 2.5 Flash Image API. WooCommerce integration for seamless product page try-ons. Supports JPEG, PNG, WebP, HEIC, and HEIF formats. Fully customizable via admin settings.
- * Version:           2.3.4
+ * Version:           2.4.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Requires Plugins:  woocommerce
@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Plugin Constants
  */
-define( 'AVTO_VERSION', '2.3.4' );
+define( 'AVTO_VERSION', '2.4.0' );
 define( 'AVTO_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AVTO_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AVTO_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -134,10 +134,24 @@ function avto_upgrade_routine( $from_version ) {
 		// No database changes needed - purely UI/UX improvements
 	}
 	
-	// Upgrade to  - CSS and JavaScript fixes for modal
+	// Upgrade to 2.4.0 - CSS and JavaScript fixes for modal
 	// Fixed modal styling and scroll behavior
-	if ( version_compare( $from_version, '2.3.4', '<' ) ) {
+	if ( version_compare( $from_version, '2.4.0', '<' ) ) {
 		// No database changes needed - frontend fixes only
+	}
+	
+	// Upgrade to 2.4.0 - Global rate limiting feature
+	// Add default values for new global rate limit settings
+	if ( version_compare( $from_version, '2.4.0', '<' ) ) {
+		if ( false === get_option( 'avto_enable_global_rate_limit' ) ) {
+			add_option( 'avto_enable_global_rate_limit', false );
+		}
+		if ( false === get_option( 'avto_global_rate_limit_requests' ) ) {
+			add_option( 'avto_global_rate_limit_requests', 100 );
+		}
+		if ( false === get_option( 'avto_global_rate_limit_window' ) ) {
+			add_option( 'avto_global_rate_limit_window', 3600 );
+		}
 	}
 	
 	// Set upgrade notice transient
@@ -332,11 +346,24 @@ function avto_admin_notices() {
 		<div class="notice notice-warning is-dismissible">
 			<p>
 				<strong><?php esc_html_e( 'AI Virtual Try-On:', 'avto' ); ?></strong>
-				<?php esc_html_e( 'Multiple rate limit violations detected. Consider adjusting rate limit settings or monitoring user activity.', 'avto' ); ?>
+				<?php esc_html_e( 'Multiple per-user rate limit violations detected. Consider adjusting rate limit settings or monitoring user activity.', 'avto' ); ?>
 			</p>
 		</div>
 		<?php
 		delete_transient( 'avto_rate_limit_warning' );
+	}
+
+	// 6. Global Rate Limit Warning (temporary notice)
+	if ( get_transient( 'avto_global_rate_limit_warning' ) ) {
+		?>
+		<div class="notice notice-error is-dismissible">
+			<p>
+				<strong><?php esc_html_e( 'AI Virtual Try-On:', 'avto' ); ?></strong>
+				<?php esc_html_e( 'Site-wide rate limit has been reached! Users are being blocked from generating images. Consider increasing the global limit or waiting for the time window to reset.', 'avto' ); ?>
+			</p>
+		</div>
+		<?php
+		delete_transient( 'avto_global_rate_limit_warning' );
 	}
 }
 add_action( 'admin_notices', 'avto_admin_notices' );

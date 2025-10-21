@@ -582,13 +582,17 @@ function avto_call_gemini_api( $user_image_path, $clothing_image_path, $product_
 /**
  * Rate Limiting Function
  * 
- * Prevents API abuse by limiting requests per user/session.
+ * Prevents API abuse by limiting requests per user/session AND globally.
  * Uses WordPress transients with user ID or session token as key.
+ * 
+ * Implements two-tier rate limiting:
+ * 1. Per-user/IP limits (always active)
+ * 2. Global site-wide limits (optional)
  * 
  * @return bool True if request is allowed, false if rate limit exceeded.
  */
 function avto_check_rate_limit() {
-	// Get rate limit settings (default: 10 requests per 60 seconds)
+	// Get rate limit settings (default: 10 requests per 60 seconds per user)
 	$max_requests = (int) get_option( 'avto_rate_limit_requests', 10 );
 	$time_window = (int) get_option( 'avto_rate_limit_window', 60 );
 
@@ -597,6 +601,41 @@ function avto_check_rate_limit() {
 		return true;
 	}
 
+	// ===== CHECK 1: GLOBAL (SITE-WIDE) RATE LIMIT =====
+	$enable_global_limit = get_option( 'avto_enable_global_rate_limit', false );
+	
+	if ( $enable_global_limit ) {
+		$global_max_requests = (int) get_option( 'avto_global_rate_limit_requests', 100 );
+		$global_time_window = (int) get_option( 'avto_global_rate_limit_window', 3600 );
+		
+		$global_transient_key = 'avto_global_rate_limit';
+		$global_count = get_transient( $global_transient_key );
+		
+		if ( false === $global_count ) {
+			// First global request - start tracking
+			set_transient( $global_transient_key, 1, $global_time_window );
+		} else {
+			// Check if global limit exceeded
+			if ( $global_count >= $global_max_requests ) {
+				// Log global violation
+				do_action( 'avto_global_rate_limit_exceeded', $global_count, $global_max_requests );
+				
+				// Set admin notice
+				set_transient( 'avto_global_rate_limit_warning', true, 3600 );
+				
+				wp_send_json_error( array(
+					'message' => __( 'Site-wide generation limit reached. Please try again later.', 'avto' ),
+					'code'    => 'global_rate_limit_exceeded',
+				) );
+				return false;
+			}
+			
+			// Increment global counter
+			set_transient( $global_transient_key, $global_count + 1, $global_time_window );
+		}
+	}
+
+	// ===== CHECK 2: PER-USER/IP RATE LIMIT =====
 	// Identify user - prefer user ID, fall back to IP address for guests
 	$user_id = get_current_user_id();
 	if ( $user_id > 0 ) {
