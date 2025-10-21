@@ -824,8 +824,21 @@ body.avto-modal-open {
 	margin-bottom: 0;
 }
 
+/* Modal-specific action section styling */
+.avto-modal .avto-action-section {
+	text-align: center !important;
+	padding: 48px 32px !important;
+	background: linear-gradient(135deg, var(--mdr-dusty-rose-light) 0%, #ffffff 100%) !important;
+	border-radius: 12px !important;
+}
+
 /* Modal-specific button fixes - ensure proper styling in WooCommerce themes */
-.avto-modal .avto-generate-btn {
+/* Target both ID and class selectors for maximum specificity */
+.avto-modal .avto-generate-btn,
+.avto-modal .avto-btn,
+.avto-modal .avto-btn-primary,
+.avto-modal button.avto-btn,
+.avto-modal button.avto-btn-primary {
 	padding: 18px 56px !important;
 	font-size: 18px !important;
 	font-weight: 700 !important;
@@ -842,16 +855,26 @@ body.avto-modal-open {
 	display: inline-block;
 	text-align: center;
 	text-decoration: none !important;
+	width: auto !important;
+	min-width: 200px !important;
 }
 
-.avto-modal .avto-generate-btn:hover:not(:disabled) {
+.avto-modal .avto-generate-btn:hover:not(:disabled),
+.avto-modal .avto-btn:hover:not(:disabled),
+.avto-modal .avto-btn-primary:hover:not(:disabled),
+.avto-modal button.avto-btn:hover:not(:disabled),
+.avto-modal button.avto-btn-primary:hover:not(:disabled) {
 	transform: translateY(-3px);
 	box-shadow: 0 8px 24px rgba(125, 90, 104, 0.4) !important;
 	background: linear-gradient(135deg, var(--mdr-burgundy-dark) 0%, #4d3540 100%) !important;
 	color: #ffffff !important;
 }
 
-.avto-modal .avto-generate-btn:disabled {
+.avto-modal .avto-generate-btn:disabled,
+.avto-modal .avto-btn:disabled,
+.avto-modal .avto-btn-primary:disabled,
+.avto-modal button.avto-btn:disabled,
+.avto-modal button.avto-btn-primary:disabled {
 	background: var(--mdr-sage-light) !important;
 	cursor: not-allowed !important;
 	box-shadow: none !important;
