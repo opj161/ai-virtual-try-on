@@ -227,7 +227,7 @@ function avto_render_tryon_history_content() {
 					}
 					?>
 					
-					<div class="avto-history-item <?php echo esc_attr( $status_class ); ?>" style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; position: relative;">
+					<div class="avto-history-item <?php echo esc_attr( $status_class ); ?>">
 						
 						<?php if ( $is_pending_or_processing ) : ?>
 							<!-- Processing/Pending Overlay -->
@@ -277,37 +277,38 @@ function avto_render_tryon_history_content() {
 							</div>
 						<?php endif; ?>
 						
-						<div style="padding: 1rem;">
-							<?php if ( $product && $product_id ) : ?>
-								<h3 style="margin: 0 0 0.5rem; font-size: 0.95rem;">
-									<a href="<?php echo esc_url( get_permalink( $product_id ) ); ?>" style="color: #333; text-decoration: none;">
-										<?php echo esc_html( $product->get_name() ); ?>
-									</a>
-								</h3>
-							<?php else : ?>
-								<h3 style="margin: 0 0 0.5rem; font-size: 0.95rem; color: #666;">
-									<?php echo esc_html( get_the_title() ); ?>
-								</h3>
-							<?php endif; ?>
-							
-							<p style="margin: 0 0 0.75rem; font-size: 0.85rem; color: #666;">
-								<?php echo esc_html( $timestamp ); ?>
-							</p>
-							
-							<?php if ( $session_status === 'avto-failed' && $error_message ) : ?>
-								<p style="margin: 0 0 0.75rem; font-size: 0.8rem; color: #dc3232; padding: 0.5rem; background: #fef2f2; border-radius: 4px;">
-									<?php echo esc_html( $error_message ); ?>
+						<div class="avto-history-card-content">
+							<div class="avto-history-card-info">
+								<?php if ( $product && $product_id ) : ?>
+									<h3 class="avto-history-card-title">
+										<a href="<?php echo esc_url( get_permalink( $product_id ) ); ?>">
+											<?php echo esc_html( $product->get_name() ); ?>
+										</a>
+									</h3>
+								<?php else : ?>
+									<h3 class="avto-history-card-title avto-no-product">
+										<?php echo esc_html( get_the_title() ); ?>
+									</h3>
+								<?php endif; ?>
+								
+								<p class="avto-history-card-date">
+									<?php echo esc_html( $timestamp ); ?>
 								</p>
-							<?php endif; ?>
+								
+								<?php if ( $session_status === 'avto-failed' && $error_message ) : ?>
+									<p class="avto-history-error-message">
+										<?php echo esc_html( $error_message ); ?>
+									</p>
+								<?php endif; ?>
+							</div>
 							
-							<div class="avto-history-actions" style="display: flex; flex-direction: column; gap: 0.5rem;">
+							<div class="avto-history-actions">
 								<?php if ( $image_url_full && $session_status === 'publish' ) : ?>
-									<div style="display: flex; gap: 0.5rem;">
+									<div class="avto-history-btn-row">
 										<button type="button" 
 												class="button avto-view-btn" 
 												data-lightbox-open
-												data-session-id="<?php echo esc_attr( $session_id ); ?>"
-												style="flex: 1; text-align: center; font-size: 0.85rem; padding: 0.5rem 0.25rem; background: #7d5a68; color: #fff; border-color: #7d5a68; display: flex; align-items: center; justify-content: center; gap: 0.25rem; min-height: 44px;">
+												data-session-id="<?php echo esc_attr( $session_id ); ?>">
 											<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 												<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
 												<circle cx="12" cy="12" r="3"></circle>
@@ -316,8 +317,7 @@ function avto_render_tryon_history_content() {
 										</button>
 										<a href="<?php echo esc_url( $image_url_full ); ?>" 
 										   download="<?php echo esc_attr( $download_filename ); ?>"
-										   class="button avto-download-btn" 
-										   style="flex: 1; text-align: center; font-size: 0.85rem; padding: 0.5rem 0.25rem; background: #9da99c; color: #fff; border-color: #9da99c; display: flex; align-items: center; justify-content: center; gap: 0.25rem; min-height: 44px; text-decoration: none;">
+										   class="button avto-download-btn">
 											<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 												<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
 												<polyline points="7 10 12 15 17 10"></polyline>
@@ -331,8 +331,7 @@ function avto_render_tryon_history_content() {
 								<?php if ( ! $is_pending_or_processing ) : ?>
 									<button type="button" 
 											class="avto-delete-history-item button" 
-											data-session-id="<?php echo esc_attr( $session_id ); ?>"
-											style="width: 100%; font-size: 0.85rem; padding: 0.5rem; background: #dc3232; color: #fff; border-color: #dc3232; display: flex; align-items: center; justify-content: center; gap: 0.25rem; min-height: 44px;">
+											data-session-id="<?php echo esc_attr( $session_id ); ?>">
 										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 											<polyline points="3 6 5 6 21 6"></polyline>
 											<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -341,15 +340,14 @@ function avto_render_tryon_history_content() {
 									</button>
 								<?php else : ?>
 									<button type="button" 
-											class="button" 
-											disabled
-											style="width: 100%; font-size: 0.85rem; padding: 0.5rem; opacity: 0.5; cursor: not-allowed; min-height: 44px;">
+											class="button avto-processing-btn" 
+											disabled>
 										<?php echo esc_html( $status_label ); ?>
 									</button>
 								<?php endif; ?>
 							</div>
 						</div>
-					</div>
+					</div><!-- .avto-history-item -->
 					
 				<?php endwhile; ?>
 				
@@ -457,42 +455,205 @@ function avto_render_tryon_history_content() {
 	</div>
 	
 	<style>
-		/* History Grid Responsive */
+		/* ===================================
+		   HISTORY GRID LAYOUT
+		   =================================== */
+		
 		.avto-history-grid {
 			display: grid;
-			grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-			gap: 1.5rem;
+			grid-template-columns: repeat(3, 1fr); /* Fixed 3 columns on desktop */
+			gap: 2rem;
 			margin-top: 1.5rem;
 		}
 		
-		.avto-history-item:hover {
-			box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-			transition: box-shadow 0.3s ease;
+		/* ===================================
+		   HISTORY CARD STRUCTURE
+		   =================================== */
+		
+		.avto-history-item {
+			display: flex;
+			flex-direction: column;
+			border: 1px solid #e1cccb;
+			border-radius: 12px;
+			overflow: hidden;
+			background: #fff;
+			box-shadow: 0 2px 8px rgba(125, 90, 104, 0.08);
+			transition: all 0.3s ease;
+			height: 100%; /* Ensures all cards same height */
 		}
 		
-		/* Image Hover Effect */
+		.avto-history-item:hover {
+			box-shadow: 0 6px 20px rgba(125, 90, 104, 0.15);
+			transform: translateY(-2px);
+			border-color: #c4cdc3;
+		}
+		
+		/* Card Content Area - Uses flexbox for consistent heights */
+		.avto-history-card-content {
+			display: flex;
+			flex-direction: column;
+			flex: 1; /* Fills available space */
+			padding: 1.25rem;
+		}
+		
+		/* Info Section - Fixed height for consistency */
+		.avto-history-card-info {
+			flex: 0 0 auto; /* Don't grow, don't shrink */
+			margin-bottom: 1rem;
+		}
+		
+		/* Title Styling */
+		.avto-history-card-title {
+			margin: 0 0 0.5rem 0;
+			font-size: 1rem;
+			font-weight: 600;
+			line-height: 1.4;
+			min-height: 2.8em; /* Accommodates 2 lines consistently */
+			display: -webkit-box;
+			-webkit-line-clamp: 2;
+			-webkit-box-orient: vertical;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+		
+		.avto-history-card-title a {
+			color: #7d5a68;
+			text-decoration: none;
+			transition: color 0.2s ease;
+		}
+		
+		.avto-history-card-title a:hover {
+			color: #63444f;
+			text-decoration: underline;
+		}
+		
+		.avto-history-card-title.avto-no-product {
+			color: #8b8391;
+		}
+		
+		/* Date Styling */
+		.avto-history-card-date {
+			margin: 0;
+			font-size: 0.875rem;
+			color: #8b8391;
+			font-weight: 500;
+		}
+		
+		/* Error Message */
+		.avto-history-error-message {
+			margin: 0.75rem 0 0 0;
+			font-size: 0.8125rem;
+			color: #dc3232;
+			padding: 0.625rem;
+			background: #fef2f2;
+			border-radius: 6px;
+			border-left: 3px solid #dc3232;
+			line-height: 1.4;
+		}
+		
+		/* ===================================
+		   BUTTON SECTION - Always at bottom
+		   =================================== */
+		
+		.avto-history-actions {
+			margin-top: auto; /* Pushes buttons to bottom of card */
+			display: flex;
+			flex-direction: column;
+			gap: 0.625rem;
+		}
+		
+		.avto-history-btn-row {
+			display: flex;
+			gap: 0.625rem;
+		}
+		
+		/* Base Button Styles */
+		.avto-history-actions .button {
+			flex: 1;
+			text-align: center;
+			font-size: 0.875rem;
+			padding: 0.625rem 0.5rem;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 0.375rem;
+			min-height: 44px;
+			border-radius: 8px;
+			font-weight: 600;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			border: none;
+			text-decoration: none;
+			line-height: 1;
+		}
+		
+		.avto-history-actions .button svg {
+			flex-shrink: 0;
+		}
+		
+		/* View Button */
+		.avto-view-btn {
+			background: #7d5a68;
+			color: #fff;
+			border-color: #7d5a68;
+		}
+		
+		.avto-view-btn:hover {
+			background: #63444f;
+			border-color: #63444f;
+			transform: translateY(-1px);
+			box-shadow: 0 2px 8px rgba(125, 90, 104, 0.3);
+		}
+		
+		/* Download Button */
+		.avto-download-btn {
+			background: #9da99c;
+			color: #fff;
+			border-color: #9da99c;
+		}
+		
+		.avto-download-btn:hover {
+			background: #8b9688;
+			border-color: #8b9688;
+			transform: translateY(-1px);
+			box-shadow: 0 2px 8px rgba(157, 169, 156, 0.3);
+		}
+		
+		/* Delete Button */
+		.avto-delete-history-item {
+			width: 100%;
+			background: #dc3232;
+			color: #fff;
+			border-color: #dc3232;
+		}
+		
+		.avto-delete-history-item:hover {
+			background: #a00;
+			border-color: #a00;
+			transform: translateY(-1px);
+			box-shadow: 0 2px 8px rgba(220, 50, 50, 0.3);
+		}
+		
+		/* Processing/Disabled Button */
+		.avto-processing-btn {
+			width: 100%;
+			background: #f3f4f5;
+			color: #8b8391;
+			border-color: #e1cccb;
+			opacity: 0.7;
+			cursor: not-allowed;
+		}
+		
+		/* ===================================
+		   IMAGE HOVER EFFECTS
+		   =================================== */
+		
 		.avto-history-image-wrapper:hover .avto-image-hover-overlay {
 			background: rgba(0,0,0,0.3) !important;
 		}
 		
 		.avto-history-image-wrapper:hover .avto-image-hover-overlay svg {
 			opacity: 1 !important;
-		}
-		
-		/* Button Hover States */
-		.avto-view-btn:hover {
-			background: #63444f !important;
-			border-color: #63444f !important;
-		}
-		
-		.avto-download-btn:hover {
-			background: #8b9688 !important;
-			border-color: #8b9688 !important;
-		}
-		
-		.avto-delete-history-item:hover {
-			background: #a00 !important;
-			border-color: #a00 !important;
 		}
 		
 		/* Lightbox Button Hover States */
@@ -522,22 +683,80 @@ function avto_render_tryon_history_content() {
 			to { transform: rotate(360deg); }
 		}
 		
-		/* Mobile Responsive */
+		/* ===================================
+		   RESPONSIVE BREAKPOINTS
+		   =================================== */
+		
+		/* Large Tablets & Small Desktops (≤1200px) */
+		@media (max-width: 1200px) {
+			.avto-history-grid {
+				gap: 1.5rem;
+			}
+		}
+		
+		/* Tablets (≤1024px) - Switch to 2 columns */
+		@media (max-width: 1024px) {
+			.avto-history-grid {
+				grid-template-columns: repeat(2, 1fr);
+				gap: 1.25rem;
+			}
+			
+			.avto-history-card-title {
+				font-size: 0.9375rem;
+			}
+		}
+		
+		/* Small Tablets & Large Phones (≤768px) */
 		@media (max-width: 768px) {
 			.avto-history-grid {
-				grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+				grid-template-columns: repeat(2, 1fr);
 				gap: 1rem;
 			}
 			
-			.avto-history-actions {
-				font-size: 0.8rem !important;
+			.avto-history-card-content {
+				padding: 1rem;
 			}
 			
+			.avto-history-card-title {
+				font-size: 0.875rem;
+				min-height: 2.6em;
+			}
+			
+			.avto-history-card-date {
+				font-size: 0.8125rem;
+			}
+			
+			.avto-history-actions .button {
+				font-size: 0.8125rem;
+				padding: 0.5rem 0.375rem;
+			}
+			
+			/* Hide button text, show icons only */
 			.avto-view-btn span,
 			.avto-download-btn span,
 			.avto-delete-history-item span {
 				display: none;
 			}
+			
+			.avto-history-actions .button svg {
+				margin: 0;
+			}
+		}
+		
+		/* Mobile Phones (≤600px) - Single column */
+		@media (max-width: 600px) {
+			.avto-history-grid {
+				grid-template-columns: 1fr;
+				gap: 1rem;
+			}
+			
+			/* Show button text again on single column */
+			.avto-view-btn span,
+			.avto-download-btn span,
+			.avto-delete-history-item span {
+				display: inline;
+			}
+		}
 			
 			.avto-lightbox-close,
 			.avto-lightbox-prev,
@@ -570,10 +789,20 @@ function avto_render_tryon_history_content() {
 			}
 		}
 		
+		/* Small Mobile (≤480px) - Optimize for compact screens */
 		@media (max-width: 480px) {
-			.avto-history-grid {
-				grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-				gap: 0.75rem;
+			.avto-history-card-content {
+				padding: 0.875rem;
+			}
+			
+			.avto-history-card-title {
+				font-size: 0.875rem;
+			}
+			
+			.avto-history-actions .button {
+				font-size: 0.8125rem;
+				padding: 0.5rem;
+				min-height: 42px;
 			}
 			
 			.avto-lightbox-zoom-controls {

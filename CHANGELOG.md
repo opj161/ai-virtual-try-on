@@ -5,6 +5,60 @@ All notable changes to the AI Virtual Try-On WordPress Plugin will be documented
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.1] - 2025-10-22
+
+### Fixed - Try-On History Layout Improvements 🎨
+
+#### Grid Layout Consistency
+- **Fixed 3-Column Desktop Grid** - Changed from auto-fill to fixed 3 columns
+  - Previously showed 4+ columns on wide screens (suboptimal)
+  - Now displays exactly 3 columns for optimal card size
+  - Better image visibility with larger card dimensions
+  - Consistent layout across all desktop sizes
+
+#### Uniform Card Heights
+- **Flexbox Architecture** - All cards now have identical heights in each row
+  - Card structure: `display: flex; flex-direction: column; height: 100%`
+  - Content area uses `flex: 1` to fill available space
+  - Buttons pushed to bottom via `margin-top: auto`
+  - No more jagged rows from variable title lengths
+
+#### Title Display Consistency
+- **2-Line Truncation** - Product names now display uniformly
+  - Fixed height: `min-height: 2.8em` accommodates exactly 2 lines
+  - Long titles truncate with ellipsis (...)
+  - Short titles maintain same vertical space
+  - Consistent visual rhythm across all cards
+
+#### Enhanced Visual Hierarchy
+- **Improved Spacing & Typography** - Professional appearance
+  - Card gaps: 2rem (32px) on desktop
+  - Card padding: 1.25rem (20px) consistent
+  - Brand colors: MDR Burgundy, Sage, Lavender, Dusty Rose
+  - Better shadows on hover (subtle elevation effect)
+
+#### Button Design Improvements
+- **Semantic CSS Classes** - Removed all inline styles
+  - View button: MDR Burgundy (#7d5a68)
+  - Download button: MDR Boho Sage (#9da99c)
+  - Delete button: WordPress Red (#dc3232)
+  - Enhanced hover states with transform and shadow
+
+#### Responsive Refinements
+- **Optimized Breakpoints** - Better mobile-to-desktop transitions
+  - Desktop (>1024px): 3 columns, 2rem gap
+  - Tablet (768-1024px): 2 columns, 1.25rem gap
+  - Mobile (≤600px): 1 column (stacked), 1rem gap
+  - Icons-only mode at 768px, full text at 600px
+
+### Technical
+- Complete CSS rewrite (~200 lines)
+- Flexbox + CSS Grid hybrid architecture
+- Removed all inline styles for maintainability
+- Zero database changes (CSS/layout only)
+
+---
+
 ## [2.6.0] - 2025-10-22
 
 ### Added - Try-On History UX Overhaul 🖼️

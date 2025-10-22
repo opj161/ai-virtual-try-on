@@ -211,13 +211,82 @@ add_action( 'avto_after_generation_success', function( $attachment_id, $image_ur
 - **Frontend dual-mode**: `assets/js/avto-frontend.js` (AVTOModal vs AVTOCore)
 - **Constants**: `ai-virtual-try-on.php` (lines 26-48)
 
-## Version & Compatibility
+## Version Management
 
-- **Current version**: (see `ai-virtual-try-on.php:26`)
+### Current Version
+- **Plugin version**: (see `ai-virtual-try-on.php:6` and line 28)
 - **WordPress**: 6.0+
 - **PHP**: 7.4+ (8.0+ recommended)
 - **WooCommerce**: 5.0+ (optional dependency)
 - **Gemini API**: `gemini-2.0-flash-exp-image` model
+
+### Updating Plugin Version (Required After Completed Features)
+
+**CRITICAL:** When a feature/fix task is 100% complete, fully tested, and ready for release, you MUST update the plugin version number. Follow this checklist:
+
+#### 1. Determine Version Number (Semantic Versioning)
+- **MAJOR (X.0.0)**: Breaking changes, incompatible API changes
+- **MINOR (x.Y.0)**: New features, backward-compatible additions
+- **PATCH (x.y.Z)**: Bug fixes, small improvements, layout/UX tweaks
+
+**Examples:**
+- Layout improvements → PATCH (2.6.0 → 2.6.1)
+- New lightbox feature → MINOR (2.5.2 → 2.6.0)
+- Database schema change → MAJOR (2.6.1 → 3.0.0)
+
+#### 2. Update Plugin Header (Line ~6)
+```php
+/**
+ * Version:           2.6.1
+ */
+```
+
+#### 3. Update Version Constant (Line ~28)
+```php
+define( 'AVTO_VERSION', '2.6.1' );
+```
+
+#### 4. Add Upgrade Routine Entry (After line ~170)
+```php
+// Upgrade to 2.6.1 - Brief Description
+// Key changes:
+// - Bullet point 1
+// - Bullet point 2
+// - Database migrations needed? (yes/no)
+if ( version_compare( $from_version, '2.6.1', '<' ) ) {
+    // Add any upgrade logic here
+    // Or leave empty if no migration needed
+}
+```
+
+#### 5. Update CHANGELOG.md (Top of file)
+Add new version section with complete feature list:
+```markdown
+## [2.6.1] - YYYY-MM-DD
+
+### Added/Fixed/Changed
+- Feature 1 description
+- Feature 2 description
+
+### Technical
+- Technical details
+- Database changes (if any)
+```
+
+#### 6. Verification Checklist
+- [ ] Plugin header version matches constant version
+- [ ] Upgrade routine includes new version entry
+- [ ] CHANGELOG.md has detailed release notes
+- [ ] Date format is YYYY-MM-DD
+- [ ] All three files updated: `ai-virtual-try-on.php` (2 places) + `CHANGELOG.md`
+
+#### When NOT to Update Version
+- Work in progress (not fully complete)
+- Experimental changes
+- Documentation-only updates
+- Internal refactoring without user-facing changes
+
+**Remember:** Version updates signal production-ready releases. Only increment when feature is 100% complete, tested, and documented.
 
 ## Quick Reference
 

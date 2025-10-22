@@ -3,7 +3,7 @@
  * Plugin Name:       AI Virtual Try-On
  * Plugin URI:        https://github.com/yourusername/ai-virtual-try-on
  * Description:       AI-powered virtual try-on experience using Google's Gemini 2.5 Flash Image API. WooCommerce integration for seamless product page try-ons. Supports JPEG, PNG, WebP, HEIC, and HEIF formats. Fully customizable via admin settings.
- * Version:           2.6.0
+ * Version:           2.6.1
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Requires Plugins:  woocommerce
@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Plugin Constants
  */
-define( 'AVTO_VERSION', '2.6.0' );
+define( 'AVTO_VERSION', '2.6.1' );
 define( 'AVTO_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AVTO_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AVTO_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -178,6 +178,17 @@ function avto_upgrade_routine( $from_version ) {
 	// - Enhanced button layouts with icons and brand colors
 	// - WCAG 2.1 AA accessibility compliance
 	// No database migrations needed - purely frontend/UX improvements
+	
+	// Upgrade to 2.6.1 - Try-On History Layout Improvements
+	// Fixed grid layout and card consistency:
+	// - Fixed desktop grid to exactly 3 columns (was auto-fill causing 4+)
+	// - Uniform card heights using flexbox architecture
+	// - Consistent title display with 2-line truncation
+	// - Better button alignment (always at bottom via margin-top: auto)
+	// - Enhanced visual hierarchy with brand colors
+	// - Improved responsive breakpoints (3→2→1 columns)
+	// - Generous spacing and better image prominence
+	// No database migrations needed - CSS/layout improvements only
 	if ( version_compare( $from_version, '2.6.0', '<' ) ) {
 		// All changes are in avto-my-account.php (CSS/JS/HTML)
 		// No settings or database schema changes required
