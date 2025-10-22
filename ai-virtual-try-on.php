@@ -3,7 +3,7 @@
  * Plugin Name:       AI Virtual Try-On
  * Plugin URI:        https://github.com/yourusername/ai-virtual-try-on
  * Description:       AI-powered virtual try-on experience using Google's Gemini 2.5 Flash Image API. WooCommerce integration for seamless product page try-ons. Supports JPEG, PNG, WebP, HEIC, and HEIF formats. Fully customizable via admin settings.
- * Version:           2.5.2
+ * Version:           2.6.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Requires Plugins:  woocommerce
@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Plugin Constants
  */
-define( 'AVTO_VERSION', '2.5.2' );
+define( 'AVTO_VERSION', '2.6.0' );
 define( 'AVTO_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AVTO_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AVTO_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -165,6 +165,23 @@ function avto_upgrade_routine( $from_version ) {
 		// Custom post statuses are registered on init, no migration needed
 		// Background processing is automatically enabled if Action Scheduler is available
 		// Existing synchronous workflow remains as fallback
+	}
+	
+	// Upgrade to 2.6.0 - Try-On History UX Overhaul
+	// Major improvements:
+	// - Full-resolution image display in lightbox (vs 300px thumbnails)
+	// - Download button with custom filenames (tryon-{product}-{date}.jpg)
+	// - Professional lightbox/modal with zoom controls (0.5x - 3x)
+	// - Keyboard navigation (ESC, arrows, +/-, 0)
+	// - Touch gestures for mobile (swipe navigation, pinch zoom)
+	// - Mobile optimization (responsive grid 140px-200px, 44px touch targets)
+	// - Enhanced button layouts with icons and brand colors
+	// - WCAG 2.1 AA accessibility compliance
+	// No database migrations needed - purely frontend/UX improvements
+	if ( version_compare( $from_version, '2.6.0', '<' ) ) {
+		// All changes are in avto-my-account.php (CSS/JS/HTML)
+		// No settings or database schema changes required
+		// Fully backward compatible with existing history data
 	}
 	
 	// Set upgrade notice transient

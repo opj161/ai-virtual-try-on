@@ -180,7 +180,7 @@ function avto_render_tryon_history_content() {
 			
 			if ( $history_query->have_posts() ) : ?>
 			
-			<div class="avto-history-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+			<div class="avto-history-grid">
 				
 				<?php while ( $history_query->have_posts() ) : $history_query->the_post(); ?>
 					<?php
@@ -189,10 +189,20 @@ function avto_render_tryon_history_content() {
 					$generated_img_id  = get_post_meta( $session_id, '_generated_image_id', true );
 					$product_id        = get_post_meta( $session_id, '_product_id', true );
 					$timestamp         = get_the_date( 'M j, Y' );
+					$timestamp_full    = get_the_date( 'Y-m-d' );
 					$error_message     = get_post_meta( $session_id, '_avto_error_message', true );
 					
-					$image_url = wp_get_attachment_image_url( $generated_img_id, 'medium' );
+					// Get both full-size and thumbnail URLs
+					$image_url_full = wp_get_attachment_url( $generated_img_id );
+					$image_url_thumb = wp_get_attachment_image_url( $generated_img_id, 'medium' );
 					$product   = $product_id ? wc_get_product( $product_id ) : null;
+					
+					// Create safe filename for download
+					$download_filename = 'tryon-';
+					if ( $product ) {
+						$download_filename .= sanitize_title( $product->get_name() ) . '-';
+					}
+					$download_filename .= $timestamp_full . '.jpg';
 					
 					// Determine status display
 					$status_class = '';
@@ -243,12 +253,27 @@ function avto_render_tryon_history_content() {
 									</p>
 								</div>
 							</div>
-						<?php elseif ( $image_url ) : ?>
+						<?php elseif ( $image_url_thumb ) : ?>
 							<!-- Success State - Show Image -->
-							<div style="position: relative; padding-top: 100%; background: #f5f5f5;">
-								<img src="<?php echo esc_url( $image_url ); ?>" 
+							<div class="avto-history-image-wrapper" 
+								 style="position: relative; padding-top: 100%; background: #f5f5f5; cursor: pointer;"
+								 data-lightbox-trigger
+								 data-image-full="<?php echo esc_url( $image_url_full ); ?>"
+								 data-image-thumb="<?php echo esc_url( $image_url_thumb ); ?>"
+								 data-session-id="<?php echo esc_attr( $session_id ); ?>"
+								 data-product-name="<?php echo esc_attr( $product ? $product->get_name() : get_the_title() ); ?>"
+								 data-timestamp="<?php echo esc_attr( $timestamp ); ?>">
+								<img src="<?php echo esc_url( $image_url_thumb ); ?>" 
 									 alt="<?php echo esc_attr( get_the_title() ); ?>" 
 									 style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;">
+								<div class="avto-image-hover-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0); transition: background 0.3s ease; display: flex; align-items: center; justify-content: center;">
+									<svg style="opacity: 0; transition: opacity 0.3s ease; color: white; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<circle cx="11" cy="11" r="8"></circle>
+										<path d="m21 21-4.35-4.35"></path>
+										<line x1="11" y1="8" x2="11" y2="14"></line>
+										<line x1="8" y1="11" x2="14" y2="11"></line>
+									</svg>
+								</div>
 							</div>
 						<?php endif; ?>
 						
@@ -275,28 +300,50 @@ function avto_render_tryon_history_content() {
 								</p>
 							<?php endif; ?>
 							
-							<div style="display: flex; gap: 0.5rem;">
-								<?php if ( $image_url && $session_status === 'publish' ) : ?>
-									<a href="<?php echo esc_url( $image_url ); ?>" 
-									   target="_blank" 
-									   class="button" 
-									   style="flex: 1; text-align: center; font-size: 0.85rem; padding: 0.5rem;">
-										<?php esc_html_e( 'View', 'avto' ); ?>
-									</a>
+							<div class="avto-history-actions" style="display: flex; flex-direction: column; gap: 0.5rem;">
+								<?php if ( $image_url_full && $session_status === 'publish' ) : ?>
+									<div style="display: flex; gap: 0.5rem;">
+										<button type="button" 
+												class="button avto-view-btn" 
+												data-lightbox-open
+												data-session-id="<?php echo esc_attr( $session_id ); ?>"
+												style="flex: 1; text-align: center; font-size: 0.85rem; padding: 0.5rem 0.25rem; background: #7d5a68; color: #fff; border-color: #7d5a68; display: flex; align-items: center; justify-content: center; gap: 0.25rem; min-height: 44px;">
+											<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+												<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+												<circle cx="12" cy="12" r="3"></circle>
+											</svg>
+											<span><?php esc_html_e( 'View', 'avto' ); ?></span>
+										</button>
+										<a href="<?php echo esc_url( $image_url_full ); ?>" 
+										   download="<?php echo esc_attr( $download_filename ); ?>"
+										   class="button avto-download-btn" 
+										   style="flex: 1; text-align: center; font-size: 0.85rem; padding: 0.5rem 0.25rem; background: #9da99c; color: #fff; border-color: #9da99c; display: flex; align-items: center; justify-content: center; gap: 0.25rem; min-height: 44px; text-decoration: none;">
+											<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+												<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+												<polyline points="7 10 12 15 17 10"></polyline>
+												<line x1="12" y1="15" x2="12" y2="3"></line>
+											</svg>
+											<span><?php esc_html_e( 'Download', 'avto' ); ?></span>
+										</a>
+									</div>
 								<?php endif; ?>
 								
 								<?php if ( ! $is_pending_or_processing ) : ?>
 									<button type="button" 
 											class="avto-delete-history-item button" 
 											data-session-id="<?php echo esc_attr( $session_id ); ?>"
-											style="flex: 1; font-size: 0.85rem; padding: 0.5rem; background: #dc3232; color: #fff; border-color: #dc3232;">
-										<?php esc_html_e( 'Delete', 'avto' ); ?>
+											style="width: 100%; font-size: 0.85rem; padding: 0.5rem; background: #dc3232; color: #fff; border-color: #dc3232; display: flex; align-items: center; justify-content: center; gap: 0.25rem; min-height: 44px;">
+										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+											<polyline points="3 6 5 6 21 6"></polyline>
+											<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+										</svg>
+										<span><?php esc_html_e( 'Delete', 'avto' ); ?></span>
 									</button>
 								<?php else : ?>
 									<button type="button" 
 											class="button" 
 											disabled
-											style="flex: 1; font-size: 0.85rem; padding: 0.5rem; opacity: 0.5; cursor: not-allowed;">
+											style="width: 100%; font-size: 0.85rem; padding: 0.5rem; opacity: 0.5; cursor: not-allowed; min-height: 44px;">
 										<?php echo esc_html( $status_label ); ?>
 									</button>
 								<?php endif; ?>
@@ -341,20 +388,471 @@ function avto_render_tryon_history_content() {
 		
 	</div><!-- .avto-tryon-wrapper -->
 	
+	<!-- Lightbox Modal -->
+	<div id="avto-history-lightbox" class="avto-lightbox" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 999999; background: rgba(0,0,0,0.95);">
+		<div class="avto-lightbox-container" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative;">
+			
+			<!-- Close Button -->
+			<button type="button" class="avto-lightbox-close" aria-label="<?php esc_attr_e( 'Close', 'avto' ); ?>" style="position: absolute; top: 20px; right: 20px; z-index: 10; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); color: white; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<line x1="18" y1="6" x2="6" y2="18"></line>
+					<line x1="6" y1="6" x2="18" y2="18"></line>
+				</svg>
+			</button>
+			
+			<!-- Navigation Arrows -->
+			<button type="button" class="avto-lightbox-prev" aria-label="<?php esc_attr_e( 'Previous', 'avto' ); ?>" style="position: absolute; left: 20px; top: 50%; transform: translateY(-50%); z-index: 10; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); color: white; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<polyline points="15 18 9 12 15 6"></polyline>
+				</svg>
+			</button>
+			
+			<button type="button" class="avto-lightbox-next" aria-label="<?php esc_attr_e( 'Next', 'avto' ); ?>" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); z-index: 10; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); color: white; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<polyline points="9 18 15 12 9 6"></polyline>
+				</svg>
+			</button>
+			
+			<!-- Image Container -->
+			<div class="avto-lightbox-image-wrapper" style="max-width: 90%; max-height: 90%; position: relative; display: flex; align-items: center; justify-content: center;">
+				<div class="avto-lightbox-loading" style="position: absolute; display: none;">
+					<div class="avto-spinner" style="width: 48px; height: 48px; border: 4px solid rgba(255,255,255,0.2); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+				</div>
+				<img src="" alt="" class="avto-lightbox-image" style="max-width: 100%; max-height: 90vh; object-fit: contain; transition: transform 0.3s ease; cursor: zoom-in;">
+			</div>
+			
+			<!-- Zoom Controls -->
+			<div class="avto-lightbox-zoom-controls" style="position: absolute; bottom: 80px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 10;">
+				<button type="button" class="avto-lightbox-zoom-in" aria-label="<?php esc_attr_e( 'Zoom In', 'avto' ); ?>" style="background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); color: white; width: 44px; height: 44px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">
+					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<circle cx="11" cy="11" r="8"></circle>
+						<path d="m21 21-4.35-4.35"></path>
+						<line x1="11" y1="8" x2="11" y2="14"></line>
+						<line x1="8" y1="11" x2="14" y2="11"></line>
+					</svg>
+				</button>
+				<button type="button" class="avto-lightbox-zoom-out" aria-label="<?php esc_attr_e( 'Zoom Out', 'avto' ); ?>" style="background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); color: white; width: 44px; height: 44px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">
+					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<circle cx="11" cy="11" r="8"></circle>
+						<path d="m21 21-4.35-4.35"></path>
+						<line x1="8" y1="11" x2="14" y2="11"></line>
+					</svg>
+				</button>
+				<button type="button" class="avto-lightbox-zoom-reset" aria-label="<?php esc_attr_e( 'Reset Zoom', 'avto' ); ?>" style="background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); color: white; width: 44px; height: 44px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">
+					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<polyline points="1 4 1 10 7 10"></polyline>
+						<polyline points="23 20 23 14 17 14"></polyline>
+						<path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path>
+					</svg>
+				</button>
+			</div>
+			
+			<!-- Metadata Overlay -->
+			<div class="avto-lightbox-metadata" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: white; padding: 12px 20px; border-radius: 8px; max-width: 90%; text-align: center; backdrop-filter: blur(10px);">
+				<h4 class="avto-lightbox-title" style="margin: 0 0 4px 0; font-size: 1rem; font-weight: 600;"></h4>
+				<p class="avto-lightbox-date" style="margin: 0; font-size: 0.85rem; opacity: 0.8;"></p>
+			</div>
+			
+		</div>
+	</div>
+	
 	<style>
+		/* History Grid Responsive */
+		.avto-history-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+			gap: 1.5rem;
+			margin-top: 1.5rem;
+		}
+		
 		.avto-history-item:hover {
 			box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 			transition: box-shadow 0.3s ease;
+		}
+		
+		/* Image Hover Effect */
+		.avto-history-image-wrapper:hover .avto-image-hover-overlay {
+			background: rgba(0,0,0,0.3) !important;
+		}
+		
+		.avto-history-image-wrapper:hover .avto-image-hover-overlay svg {
+			opacity: 1 !important;
+		}
+		
+		/* Button Hover States */
+		.avto-view-btn:hover {
+			background: #63444f !important;
+			border-color: #63444f !important;
+		}
+		
+		.avto-download-btn:hover {
+			background: #8b9688 !important;
+			border-color: #8b9688 !important;
 		}
 		
 		.avto-delete-history-item:hover {
 			background: #a00 !important;
 			border-color: #a00 !important;
 		}
+		
+		/* Lightbox Button Hover States */
+		.avto-lightbox-close:hover,
+		.avto-lightbox-prev:hover,
+		.avto-lightbox-next:hover,
+		.avto-lightbox-zoom-in:hover,
+		.avto-lightbox-zoom-out:hover,
+		.avto-lightbox-zoom-reset:hover {
+			background: rgba(255,255,255,0.2) !important;
+			border-color: rgba(255,255,255,0.5) !important;
+			transform: scale(1.05);
+		}
+		
+		.avto-lightbox-prev:hover,
+		.avto-lightbox-next:hover {
+			transform: translateY(-50%) scale(1.05) !important;
+		}
+		
+		/* Zoom States */
+		.avto-lightbox-image.zoomed {
+			cursor: zoom-out !important;
+		}
+		
+		/* Spinner Animation */
+		@keyframes spin {
+			to { transform: rotate(360deg); }
+		}
+		
+		/* Mobile Responsive */
+		@media (max-width: 768px) {
+			.avto-history-grid {
+				grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+				gap: 1rem;
+			}
+			
+			.avto-history-actions {
+				font-size: 0.8rem !important;
+			}
+			
+			.avto-view-btn span,
+			.avto-download-btn span,
+			.avto-delete-history-item span {
+				display: none;
+			}
+			
+			.avto-lightbox-close,
+			.avto-lightbox-prev,
+			.avto-lightbox-next {
+				width: 40px !important;
+				height: 40px !important;
+			}
+			
+			.avto-lightbox-prev {
+				left: 10px !important;
+			}
+			
+			.avto-lightbox-next {
+				right: 10px !important;
+			}
+			
+			.avto-lightbox-close {
+				top: 10px !important;
+				right: 10px !important;
+			}
+			
+			.avto-lightbox-zoom-controls {
+				bottom: 60px !important;
+				right: 10px !important;
+			}
+			
+			.avto-lightbox-metadata {
+				font-size: 0.85rem !important;
+				padding: 8px 12px !important;
+			}
+		}
+		
+		@media (max-width: 480px) {
+			.avto-history-grid {
+				grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+				gap: 0.75rem;
+			}
+			
+			.avto-lightbox-zoom-controls {
+				flex-direction: row !important;
+				bottom: 10px !important;
+				right: 50% !important;
+				transform: translateX(50%);
+			}
+			
+			.avto-lightbox-metadata {
+				bottom: 60px !important;
+			}
+		}
 	</style>
 	
 	<script type="text/javascript">
 	jQuery(document).ready(function($) {
+		
+		/* ========================================
+		   LIGHTBOX FUNCTIONALITY
+		   ======================================== */
+		const AVTOHistoryLightbox = {
+			currentIndex: 0,
+			images: [],
+			zoomLevel: 1,
+			$lightbox: null,
+			$image: null,
+			
+			init: function() {
+				this.$lightbox = $('#avto-history-lightbox');
+				this.$image = $('.avto-lightbox-image');
+				this.bindEvents();
+				this.collectImages();
+			},
+			
+			collectImages: function() {
+				this.images = [];
+				$('[data-lightbox-trigger]').each(function(index) {
+					const $trigger = $(this);
+					AVTOHistoryLightbox.images.push({
+						index: index,
+						fullUrl: $trigger.data('image-full'),
+						thumbUrl: $trigger.data('image-thumb'),
+						productName: $trigger.data('product-name'),
+						timestamp: $trigger.data('timestamp'),
+						$element: $trigger
+					});
+				});
+			},
+			
+			bindEvents: function() {
+				const self = this;
+				
+				// Open lightbox on image click or View button
+				$(document).on('click', '[data-lightbox-trigger], [data-lightbox-open]', function(e) {
+					e.preventDefault();
+					const sessionId = $(this).data('session-id');
+					const imageData = self.images.find(img => img.$element.data('session-id') === sessionId);
+					if (imageData) {
+						self.open(imageData.index);
+					}
+				});
+				
+				// Close button
+				$('.avto-lightbox-close').on('click', function() {
+					self.close();
+				});
+				
+				// Click backdrop to close
+				this.$lightbox.on('click', function(e) {
+					if ($(e.target).is('.avto-lightbox') || $(e.target).is('.avto-lightbox-container')) {
+						self.close();
+					}
+				});
+				
+				// Navigation
+				$('.avto-lightbox-prev').on('click', function() {
+					self.navigate(-1);
+				});
+				
+				$('.avto-lightbox-next').on('click', function() {
+					self.navigate(1);
+				});
+				
+				// Zoom controls
+				$('.avto-lightbox-zoom-in').on('click', function() {
+					self.zoom(0.25);
+				});
+				
+				$('.avto-lightbox-zoom-out').on('click', function() {
+					self.zoom(-0.25);
+				});
+				
+				$('.avto-lightbox-zoom-reset').on('click', function() {
+					self.resetZoom();
+				});
+				
+				// Image click to toggle zoom
+				this.$image.on('click', function() {
+					if (self.zoomLevel === 1) {
+						self.zoom(1); // Zoom to 2x
+					} else {
+						self.resetZoom();
+					}
+				});
+				
+				// Keyboard controls
+				$(document).on('keydown', function(e) {
+					if (!self.$lightbox.is(':visible')) return;
+					
+					switch(e.key) {
+						case 'Escape':
+							self.close();
+							break;
+						case 'ArrowLeft':
+							self.navigate(-1);
+							break;
+						case 'ArrowRight':
+							self.navigate(1);
+							break;
+						case '+':
+						case '=':
+							self.zoom(0.25);
+							break;
+						case '-':
+						case '_':
+							self.zoom(-0.25);
+							break;
+						case '0':
+							self.resetZoom();
+							break;
+					}
+				});
+				
+				// Touch gestures for mobile
+				let touchStartX = 0;
+				let touchStartY = 0;
+				let touchStartDistance = 0;
+				
+				this.$image.on('touchstart', function(e) {
+					if (e.touches.length === 1) {
+						touchStartX = e.touches[0].clientX;
+						touchStartY = e.touches[0].clientY;
+					} else if (e.touches.length === 2) {
+						const dx = e.touches[0].clientX - e.touches[1].clientX;
+						const dy = e.touches[0].clientY - e.touches[1].clientY;
+						touchStartDistance = Math.sqrt(dx * dx + dy * dy);
+					}
+				});
+				
+				this.$image.on('touchmove', function(e) {
+					if (e.touches.length === 2 && touchStartDistance > 0) {
+						e.preventDefault();
+						const dx = e.touches[0].clientX - e.touches[1].clientX;
+						const dy = e.touches[0].clientY - e.touches[1].clientY;
+						const distance = Math.sqrt(dx * dx + dy * dy);
+						const scale = distance / touchStartDistance;
+						
+						if (scale > 1.1) {
+							self.zoom(0.25);
+							touchStartDistance = distance;
+						} else if (scale < 0.9) {
+							self.zoom(-0.25);
+							touchStartDistance = distance;
+						}
+					}
+				});
+				
+				this.$image.on('touchend', function(e) {
+					if (e.changedTouches.length === 1 && touchStartX > 0) {
+						const touchEndX = e.changedTouches[0].clientX;
+						const touchEndY = e.changedTouches[0].clientY;
+						const deltaX = touchEndX - touchStartX;
+						const deltaY = touchEndY - touchStartY;
+						
+						// Swipe detection (horizontal swipe > 50px and mostly horizontal)
+						if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+							if (deltaX > 0) {
+								self.navigate(-1); // Swipe right = previous
+							} else {
+								self.navigate(1); // Swipe left = next
+							}
+						}
+						
+						touchStartX = 0;
+						touchStartY = 0;
+					}
+					touchStartDistance = 0;
+				});
+			},
+			
+			open: function(index) {
+				this.currentIndex = index;
+				this.loadImage();
+				this.$lightbox.fadeIn(300);
+				$('body').css('overflow', 'hidden'); // Prevent body scroll
+				this.updateNavigation();
+			},
+			
+			close: function() {
+				this.$lightbox.fadeOut(300);
+				$('body').css('overflow', '');
+				this.resetZoom();
+			},
+			
+			loadImage: function() {
+				const imageData = this.images[this.currentIndex];
+				if (!imageData) return;
+				
+				// Show loading
+				$('.avto-lightbox-loading').show();
+				this.$image.hide();
+				
+				// Load image
+				const img = new Image();
+				img.onload = () => {
+					this.$image.attr('src', imageData.fullUrl);
+					this.$image.attr('alt', imageData.productName);
+					$('.avto-lightbox-title').text(imageData.productName);
+					$('.avto-lightbox-date').text(imageData.timestamp);
+					$('.avto-lightbox-loading').hide();
+					this.$image.fadeIn(300);
+					this.resetZoom();
+				};
+				img.onerror = () => {
+					$('.avto-lightbox-loading').hide();
+					alert('<?php echo esc_js( __( 'Failed to load image.', 'avto' ) ); ?>');
+					this.close();
+				};
+				img.src = imageData.fullUrl;
+			},
+			
+			navigate: function(direction) {
+				this.currentIndex += direction;
+				
+				// Wrap around
+				if (this.currentIndex < 0) {
+					this.currentIndex = this.images.length - 1;
+				} else if (this.currentIndex >= this.images.length) {
+					this.currentIndex = 0;
+				}
+				
+				this.loadImage();
+				this.updateNavigation();
+			},
+			
+			updateNavigation: function() {
+				// Hide/show navigation arrows if only one image
+				if (this.images.length <= 1) {
+					$('.avto-lightbox-prev, .avto-lightbox-next').hide();
+				} else {
+					$('.avto-lightbox-prev, .avto-lightbox-next').show();
+				}
+			},
+			
+			zoom: function(delta) {
+				this.zoomLevel = Math.max(0.5, Math.min(3, this.zoomLevel + delta));
+				this.$image.css('transform', `scale(${this.zoomLevel})`);
+				
+				if (this.zoomLevel > 1) {
+					this.$image.addClass('zoomed');
+				} else {
+					this.$image.removeClass('zoomed');
+				}
+			},
+			
+			resetZoom: function() {
+				this.zoomLevel = 1;
+				this.$image.css('transform', 'scale(1)');
+				this.$image.removeClass('zoomed');
+			}
+		};
+		
+		// Initialize lightbox
+		AVTOHistoryLightbox.init();
+		
+		/* ========================================
+		   DEFAULT IMAGE UPLOAD
+		   ======================================== */
 		
 		// Enable upload button when file is selected
 		$('#avto_default_user_image_upload').on('change', function() {

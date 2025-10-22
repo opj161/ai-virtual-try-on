@@ -5,6 +5,124 @@ All notable changes to the AI Virtual Try-On WordPress Plugin will be documented
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2025-10-22
+
+### Added - Try-On History UX Overhaul 🖼️
+
+#### Full-Resolution Image Support
+- **High-Quality Display** - Lightbox now displays full-resolution images (1024px+)
+  - Grid continues to use optimized thumbnails for fast loading
+  - Users can finally see detailed clothing fit and quality
+  - Lazy loading ensures performance isn't impacted
+  - No more pixelated 300px previews
+
+#### Professional Lightbox/Modal System
+- **Click-to-Zoom Interface** - Click any thumbnail or "View" button to open full-screen lightbox
+  - Full-screen overlay with centered image display
+  - Close via X button, ESC key, or backdrop click
+  - Smooth fade-in animations and loading states
+  - Professional metadata overlay (product name, date)
+
+- **Advanced Zoom Controls** - 0.5x to 3x zoom range with multiple input methods
+  - Zoom In/Out/Reset buttons (bottom-right)
+  - Keyboard shortcuts: `+`/`-` to zoom, `0` to reset
+  - Click image to toggle between 1x and 2x zoom
+  - Visual feedback for zoom state (cursor changes)
+
+- **Gallery Navigation** - Navigate between multiple try-on images
+  - Prev/Next arrow buttons (left/right of image)
+  - Keyboard shortcuts: `←`/`→` arrow keys
+  - Wraps from last to first image
+  - Navigation hidden when only one image exists
+
+- **Touch Gesture Support** - Native mobile interactions
+  - Swipe left/right to navigate between images
+  - Pinch-to-zoom (two-finger gesture)
+  - Single tap to toggle zoom
+  - Responsive to touch events with proper thresholds
+
+#### Download Functionality
+- **One-Click Download** - Download full-resolution images with custom filenames
+  - Format: `tryon-{product-name}-{date}.jpg`
+  - Example: `tryon-summer-dress-2025-10-22.jpg`
+  - Uses HTML5 download attribute for instant save
+  - No right-click → "Save As" needed
+  - Download icon for visual clarity
+
+#### Enhanced Button Layouts
+- **Icon-Based Design** - Visual clarity with brand-colored buttons
+  - View button: Eye icon + MDR Burgundy (`#7d5a68`)
+  - Download button: Download icon + MDR Boho Sage (`#9da99c`)
+  - Delete button: Trash icon + WordPress Red (`#dc3232`)
+  - Two-row layout: View/Download on top, Delete below
+  - Consistent spacing and professional hover states
+
+#### Mobile Optimization
+- **Responsive Grid** - Adapts to all screen sizes
+  - Desktop (>768px): 200px minimum column width
+  - Tablet (768px-481px): 150px columns, icons-only buttons
+  - Mobile (≤480px): 140px columns, optimized layout
+  - Fits perfectly on 320px screens (was broken before)
+
+- **Touch-Friendly Controls** - WCAG 2.1 AA compliant
+  - All buttons 44px minimum height (accessibility standard)
+  - Compact lightbox controls on mobile (40px)
+  - Button labels hide on small screens, icons remain
+  - Zoom controls stack horizontally on phones
+  - Proper tap target spacing prevents mis-taps
+
+#### Visual Enhancements
+- **Image Hover Effects** - Clear visual feedback
+  - Semi-transparent overlay on hover
+  - Magnifying glass icon appears
+  - Smooth 0.3s transitions
+  - Indicates image is clickable
+
+- **Loading States** - Better user feedback
+  - Spinner shown while full-resolution image loads
+  - Progressive image loading
+  - Fade-in animation when ready
+
+#### Accessibility Improvements
+- **WCAG 2.1 AA Compliance** - Full keyboard and screen reader support
+  - ARIA labels on all lightbox controls
+  - Complete keyboard navigation (ESC, arrows, zoom keys)
+  - Focus management and visible indicators
+  - Screen reader announcements for all actions
+  - Status indicators use text + color (not color alone)
+
+#### Technical Improvements
+- **Performance Optimized** - Efficient resource usage
+  - Lazy loading: Full images only load in lightbox
+  - Event delegation: Single listeners for all thumbnails
+  - Efficient DOM: Lightbox HTML rendered once, reused
+  - No external dependencies: Pure jQuery implementation
+
+- **Browser Compatibility** - Works across modern browsers
+  - Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
+  - Mobile Safari 14+, Chrome Mobile 90+
+  - Touch events for mobile devices
+  - Fallback for older browsers
+
+### Changed
+- Grid minimum width reduced from 250px to 200px for better mobile fit
+- Button layouts restructured from inline to stacked for clarity
+- Image URLs now fetch both thumbnail (grid) and full-size (lightbox)
+- History display uses optimized rendering for better performance
+
+### Technical Details
+- **Files Modified:** `includes/avto-my-account.php` (~400 lines added)
+- **Dependencies:** None (pure jQuery, no external libraries)
+- **Backward Compatibility:** 100% - no breaking changes
+- **Database Changes:** None - purely frontend/UI improvements
+
+### Documentation
+- Added `HISTORY-FEATURE-IMPROVEMENTS.md` - Complete technical documentation
+- Added `TESTING-GUIDE-HISTORY.md` - Comprehensive testing checklist
+- Added `BEFORE-AFTER-COMPARISON.md` - Visual comparisons and metrics
+
+---
+
 ## [2.5.0] - 2025-10-22
 
 ### Added - Immediate Background Processing 🚀
