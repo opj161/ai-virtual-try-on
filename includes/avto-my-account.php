@@ -45,6 +45,8 @@ add_filter( 'query_vars', 'avto_add_paged_query_var' );
 /**
  * Add Try-On History to WooCommerce My Account menu
  * 
+ * Displays notification badge if user has new results.
+ * 
  * @since 2.3.0
  * 
  * @param array $items Existing menu items
@@ -55,8 +57,20 @@ function avto_add_my_account_menu_item( $items ) {
 	$logout = isset( $items['customer-logout'] ) ? $items['customer-logout'] : null;
 	unset( $items['customer-logout'] );
 	
+	// Get notification count for current user
+	$new_count = 0;
+	if ( is_user_logged_in() ) {
+		$new_count = (int) get_user_meta( get_current_user_id(), '_avto_new_results_count', true );
+	}
+	
+	// Build menu item with notification badge if needed
+	$menu_label = __( 'Virtual Try-On', 'avto' );
+	if ( $new_count > 0 ) {
+		$menu_label .= ' <span class="avto-notification-dot">' . esc_html( $new_count ) . '</span>';
+	}
+	
 	// Add our item
-	$items['try-on-history'] = __( 'Virtual Try-On', 'avto' );
+	$items['try-on-history'] = $menu_label;
 	
 	// Re-add logout at the end
 	if ( $logout ) {
@@ -79,6 +93,9 @@ add_filter( 'woocommerce_account_menu_items', 'avto_add_my_account_menu_item' );
  */
 function avto_render_tryon_history_content() {
 	$user_id = get_current_user_id();
+	
+	// Clear notification flag when user visits this page
+	delete_user_meta( $user_id, '_avto_new_results_count' );
 	
 	// Get default image data
 	$default_image_id  = get_user_meta( $user_id, '_avto_default_user_image_id', true );
@@ -148,7 +165,7 @@ function avto_render_tryon_history_content() {
 			// Get current page for pagination
 			$paged = get_query_var( 'paged' ) ? absint( get_query_var( 'paged' ) ) : 1;
 			
-			// Query user's try-on history
+			// Query user's try-on history - include all statuses
 			$args = array(
 				'post_type'      => 'avto_tryon_session',
 				'author'         => $user_id,
@@ -156,7 +173,7 @@ function avto_render_tryon_history_content() {
 				'paged'          => $paged,
 				'orderby'        => 'date',
 				'order'          => 'DESC',
-				'post_status'    => 'publish',
+				'post_status'    => array( 'publish', 'avto-pending', 'avto-processing', 'avto-failed' ),
 			);
 			
 			$history_query = new WP_Query( $args );
@@ -168,16 +185,66 @@ function avto_render_tryon_history_content() {
 				<?php while ( $history_query->have_posts() ) : $history_query->the_post(); ?>
 					<?php
 					$session_id        = get_the_ID();
+					$session_status    = get_post_status( $session_id );
 					$generated_img_id  = get_post_meta( $session_id, '_generated_image_id', true );
 					$product_id        = get_post_meta( $session_id, '_product_id', true );
 					$timestamp         = get_the_date( 'M j, Y' );
+					$error_message     = get_post_meta( $session_id, '_avto_error_message', true );
 					
 					$image_url = wp_get_attachment_image_url( $generated_img_id, 'medium' );
 					$product   = $product_id ? wc_get_product( $product_id ) : null;
+					
+					// Determine status display
+					$status_class = '';
+					$status_label = '';
+					$is_pending_or_processing = false;
+					
+					switch ( $session_status ) {
+						case 'avto-pending':
+							$status_class = 'avto-status-pending';
+							$status_label = __( 'Queued', 'avto' );
+							$is_pending_or_processing = true;
+							break;
+						case 'avto-processing':
+							$status_class = 'avto-status-processing';
+							$status_label = __( 'Processing...', 'avto' );
+							$is_pending_or_processing = true;
+							break;
+						case 'avto-failed':
+							$status_class = 'avto-status-failed';
+							$status_label = __( 'Failed', 'avto' );
+							break;
+					}
 					?>
 					
-					<div class="avto-history-item" style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff;">
-						<?php if ( $image_url ) : ?>
+					<div class="avto-history-item <?php echo esc_attr( $status_class ); ?>" style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; position: relative;">
+						
+						<?php if ( $is_pending_or_processing ) : ?>
+							<!-- Processing/Pending Overlay -->
+							<div style="position: relative; padding-top: 100%; background: #f5f5f5; display: flex; align-items: center; justify-content: center;">
+								<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+									<div class="avto-spinner" style="width: 48px; height: 48px; border: 4px solid #e1cccb; border-top-color: #7d5a68; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
+									<p style="margin: 0; color: #7d5a68; font-weight: 600; font-size: 0.9rem;">
+										<?php echo esc_html( $status_label ); ?>
+									</p>
+								</div>
+							</div>
+						<?php elseif ( $session_status === 'avto-failed' ) : ?>
+							<!-- Failed State -->
+							<div style="position: relative; padding-top: 100%; background: #f5f5f5; display: flex; align-items: center; justify-content: center;">
+								<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; padding: 1rem;">
+									<svg style="color: #dc3232; margin-bottom: 1rem;" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<circle cx="12" cy="12" r="10"></circle>
+										<line x1="12" y1="8" x2="12" y2="12"></line>
+										<line x1="12" y1="16" x2="12.01" y2="16"></line>
+									</svg>
+									<p style="margin: 0; color: #dc3232; font-weight: 600; font-size: 0.9rem;">
+										<?php echo esc_html( $status_label ); ?>
+									</p>
+								</div>
+							</div>
+						<?php elseif ( $image_url ) : ?>
+							<!-- Success State - Show Image -->
 							<div style="position: relative; padding-top: 100%; background: #f5f5f5;">
 								<img src="<?php echo esc_url( $image_url ); ?>" 
 									 alt="<?php echo esc_attr( get_the_title() ); ?>" 
@@ -202,8 +269,14 @@ function avto_render_tryon_history_content() {
 								<?php echo esc_html( $timestamp ); ?>
 							</p>
 							
+							<?php if ( $session_status === 'avto-failed' && $error_message ) : ?>
+								<p style="margin: 0 0 0.75rem; font-size: 0.8rem; color: #dc3232; padding: 0.5rem; background: #fef2f2; border-radius: 4px;">
+									<?php echo esc_html( $error_message ); ?>
+								</p>
+							<?php endif; ?>
+							
 							<div style="display: flex; gap: 0.5rem;">
-								<?php if ( $image_url ) : ?>
+								<?php if ( $image_url && $session_status === 'publish' ) : ?>
 									<a href="<?php echo esc_url( $image_url ); ?>" 
 									   target="_blank" 
 									   class="button" 
@@ -212,12 +285,21 @@ function avto_render_tryon_history_content() {
 									</a>
 								<?php endif; ?>
 								
-								<button type="button" 
-										class="avto-delete-history-item button" 
-										data-session-id="<?php echo esc_attr( $session_id ); ?>"
-										style="flex: 1; font-size: 0.85rem; padding: 0.5rem; background: #dc3232; color: #fff; border-color: #dc3232;">
-									<?php esc_html_e( 'Delete', 'avto' ); ?>
-								</button>
+								<?php if ( ! $is_pending_or_processing ) : ?>
+									<button type="button" 
+											class="avto-delete-history-item button" 
+											data-session-id="<?php echo esc_attr( $session_id ); ?>"
+											style="flex: 1; font-size: 0.85rem; padding: 0.5rem; background: #dc3232; color: #fff; border-color: #dc3232;">
+										<?php esc_html_e( 'Delete', 'avto' ); ?>
+									</button>
+								<?php else : ?>
+									<button type="button" 
+											class="button" 
+											disabled
+											style="flex: 1; font-size: 0.85rem; padding: 0.5rem; opacity: 0.5; cursor: not-allowed;">
+										<?php echo esc_html( $status_label ); ?>
+									</button>
+								<?php endif; ?>
 							</div>
 						</div>
 					</div>

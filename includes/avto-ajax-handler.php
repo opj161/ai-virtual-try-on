@@ -298,7 +298,70 @@ function avto_handle_generate_image_request() {
 		}
 	}
 
-	// 7. CALL GEMINI API
+	// 7. BACKGROUND PROCESSING - Create job and trigger immediate async processing
+	$use_background_processing = true; // Always use background processing
+	
+	// Allow developers to disable background processing via filter
+	$use_background_processing = apply_filters( 'avto_use_background_processing', $use_background_processing );
+	
+	if ( $use_background_processing ) {
+		// Create job post to track the generation
+		$session_title = __( 'Try-On Session', 'avto' );
+		
+		// If we have a product ID, include product name in title
+		if ( $product_id > 0 && function_exists( 'wc_get_product' ) ) {
+			$product = wc_get_product( $product_id );
+			if ( $product ) {
+				$session_title = sprintf(
+					/* translators: %s: product name */
+					__( 'Try-On: %s', 'avto' ),
+					$product->get_name()
+				);
+			}
+		}
+		
+		$session_data = array(
+			'post_type'   => 'avto_tryon_session',
+			'post_title'  => $session_title,
+			'post_status' => 'avto-pending',
+			'post_author' => get_current_user_id(),
+		);
+		
+		$session_id = wp_insert_post( $session_data );
+		
+		if ( is_wp_error( $session_id ) || ! $session_id ) {
+			// Fallback to synchronous processing if job creation fails
+			error_log( 'AVTO: Failed to create job post - ' . ( is_wp_error( $session_id ) ? $session_id->get_error_message() : 'Unknown error' ) );
+			$use_background_processing = false;
+		} else {
+			// Save job parameters as post meta
+			update_post_meta( $session_id, '_product_id', absint( $product_id ) );
+			update_post_meta( $session_id, '_user_image_id', absint( $attachment_id ) );
+			update_post_meta( $session_id, '_user_image_path', sanitize_text_field( $user_image_path ) );
+			update_post_meta( $session_id, '_clothing_image_id', absint( $clothing_image_id ) );
+			update_post_meta( $session_id, '_clothing_image_path', sanitize_text_field( $clothing_image_path ) );
+			update_post_meta( $session_id, '_is_wc_mode', $is_wc_mode ? 1 : 0 );
+			update_post_meta( $session_id, '_cache_key', sanitize_text_field( $cache_key ) );
+			
+			// Trigger IMMEDIATE background processing via non-blocking HTTP request
+			avto_trigger_background_job( $session_id );
+			
+			// Clean up temporary file if in shortcode mode (will be recreated in worker if needed)
+			if ( ! $is_wc_mode && file_exists( $clothing_image_path ) ) {
+				@unlink( $clothing_image_path );
+			}
+			
+			// Return immediate response
+			wp_send_json_success( array(
+				'status'     => 'pending',
+				'session_id' => $session_id,
+				'message'    => __( 'Your virtual try-on is being generated! We will notify you when it\'s ready.', 'avto' ),
+			) );
+		}
+	}
+	
+	// 8. FALLBACK: SYNCHRONOUS PROCESSING
+	// If Action Scheduler is not available or job creation failed, process immediately
 	// Allow developers to hook before API call
 	do_action( 'avto_before_api_call', $user_image_path, $clothing_image_path, $product_id, $clothing_image_id );
 	
@@ -315,13 +378,13 @@ function avto_handle_generate_image_request() {
 		) );
 	}
 
-	// 8. CACHE THE RESULT (if enabled)
+	// 9. CACHE THE RESULT (if enabled)
 	if ( $cache_enabled && ! empty( $cache_key ) ) {
 		$cache_duration = get_option( 'avto_cache_duration', 86400 );
 		set_transient( $cache_key, $result, absint( $cache_duration ) );
 	}
 
-	// 9. RETURN SUCCESS RESPONSE
+	// 10. RETURN SUCCESS RESPONSE
 	wp_send_json_success( array(
 		'image_url' => $result['image_url'],
 		'message'   => __( 'Virtual try-on generated successfully!', 'avto' ),
@@ -331,6 +394,96 @@ function avto_handle_generate_image_request() {
 // Register AJAX handlers for both logged-in and non-logged-in users
 add_action( 'wp_ajax_avto_generate_image', 'avto_handle_generate_image_request' );
 add_action( 'wp_ajax_nopriv_avto_generate_image', 'avto_handle_generate_image_request' );
+
+/**
+ * AJAX Handler: Check Generation Job Status
+ * 
+ * Allows frontend to poll for job completion status.
+ * Returns current status and result data when available.
+ * 
+ * @since 2.5.0
+ */
+function avto_check_job_status() {
+	// Verify nonce
+	check_ajax_referer( 'avto-generate-image-nonce', 'nonce' );
+	
+	// Get session ID
+	$session_id = isset( $_POST['session_id'] ) ? absint( $_POST['session_id'] ) : 0;
+	
+	if ( ! $session_id ) {
+		wp_send_json_error( array(
+			'message' => __( 'Invalid session ID.', 'avto' ),
+		) );
+	}
+	
+	// Get session post
+	$session = get_post( $session_id );
+	
+	if ( ! $session || 'avto_tryon_session' !== $session->post_type ) {
+		wp_send_json_error( array(
+			'message' => __( 'Session not found.', 'avto' ),
+		) );
+	}
+	
+	// Security: Verify user owns this session (if logged in)
+	if ( is_user_logged_in() && absint( $session->post_author ) !== get_current_user_id() ) {
+		wp_send_json_error( array(
+			'message' => __( 'You do not have permission to access this session.', 'avto' ),
+		) );
+	}
+	
+	$status = get_post_status( $session );
+	
+	// Return appropriate response based on status
+	switch ( $status ) {
+		case 'avto-pending':
+		case 'avto-processing':
+			wp_send_json_success( array(
+				'status'  => $status === 'avto-pending' ? 'pending' : 'processing',
+				'message' => __( 'Your virtual try-on is being generated...', 'avto' ),
+			) );
+			break;
+			
+		case 'publish':
+			// Job completed successfully
+			$image_id  = get_post_meta( $session_id, '_generated_image_id', true );
+			$image_url = $image_id ? wp_get_attachment_url( $image_id ) : '';
+			
+			if ( $image_url ) {
+				wp_send_json_success( array(
+					'status'    => 'completed',
+					'image_url' => $image_url,
+					'message'   => __( 'Virtual try-on generated successfully!', 'avto' ),
+				) );
+			} else {
+				wp_send_json_error( array(
+					'message' => __( 'Generated image not found.', 'avto' ),
+				) );
+			}
+			break;
+			
+		case 'avto-failed':
+			// Job failed
+			$error_message = get_post_meta( $session_id, '_avto_error_message', true );
+			
+			if ( empty( $error_message ) ) {
+				$error_message = __( 'An unknown error occurred during generation.', 'avto' );
+			}
+			
+			wp_send_json_error( array(
+				'status'  => 'failed',
+				'message' => $error_message,
+			) );
+			break;
+			
+		default:
+			wp_send_json_error( array(
+				'message' => __( 'Unknown session status.', 'avto' ),
+			) );
+	}
+}
+add_action( 'wp_ajax_avto_check_job_status', 'avto_check_job_status' );
+add_action( 'wp_ajax_nopriv_avto_check_job_status', 'avto_check_job_status' );
 
 /**
  * Call Gemini API to generate virtual try-on image
@@ -578,6 +731,246 @@ function avto_call_gemini_api( $user_image_path, $clothing_image_path, $product_
 		$product_id
 	);
 }
+
+/**
+ * Trigger Background Job Immediately via Non-Blocking HTTP Request
+ * 
+ * This function fires off an async HTTP request to process the job immediately
+ * in a separate process. Unlike Action Scheduler (which queues jobs), this
+ * starts processing right away without blocking the user's response.
+ * 
+ * The magic: Using 'blocking' => false means WordPress sends the request and
+ * immediately continues without waiting for a response. The background request
+ * runs independently.
+ * 
+ * @since 2.5.0
+ * @param int $session_id The ID of the avto_tryon_session post.
+ */
+function avto_trigger_background_job( $session_id ) {
+	// Build the internal URL for the background worker endpoint
+	$url = add_query_arg(
+		array(
+			'action'     => 'avto_process_background_job',
+			'session_id' => $session_id,
+			'nonce'      => wp_create_nonce( 'avto_background_job_' . $session_id ),
+		),
+		admin_url( 'admin-ajax.php' )
+	);
+	
+	// Debug logging
+	if ( get_option( 'avto_debug_mode', false ) ) {
+		error_log( 'AVTO: Triggering background job for session ' . $session_id . ' at URL: ' . $url );
+	}
+	
+	// Fire non-blocking request - this returns immediately
+	$result = wp_remote_post(
+		$url,
+		array(
+			'timeout'   => 1, // Allow time for connection establishment (1 second is sufficient)
+			'blocking'  => false, // Don't wait for response - CRITICAL!
+			'sslverify' => apply_filters( 'https_local_ssl_verify', false ),
+			'cookies'   => $_COOKIE, // Pass cookies for authentication
+		)
+	);
+	
+	// Debug logging for failures
+	if ( is_wp_error( $result ) ) {
+		error_log( 'AVTO ERROR: Failed to trigger background job for session ' . $session_id . ' - ' . $result->get_error_message() );
+	}
+}
+
+/**
+ * Background Worker: Process Generation Job (HTTP Endpoint)
+ * 
+ * This endpoint is called via the non-blocking HTTP request above.
+ * It runs in a separate PHP process, allowing the user's original request
+ * to complete immediately while this continues processing.
+ * 
+ * @since 2.5.0
+ */
+function avto_process_background_job() {
+	// Get session ID
+	$session_id = isset( $_REQUEST['session_id'] ) ? absint( $_REQUEST['session_id'] ) : 0;
+	
+	// Debug logging
+	if ( get_option( 'avto_debug_mode', false ) ) {
+		error_log( 'AVTO: Background job endpoint called for session ' . $session_id );
+	}
+	
+	if ( ! $session_id ) {
+		error_log( 'AVTO ERROR: Background job called with invalid session ID' );
+		wp_die( 'Invalid session ID', 'AVTO Background Job', array( 'response' => 400 ) );
+	}
+	
+	// Verify nonce
+	$nonce = isset( $_REQUEST['nonce'] ) ? sanitize_text_field( $_REQUEST['nonce'] ) : '';
+	if ( ! wp_verify_nonce( $nonce, 'avto_background_job_' . $session_id ) ) {
+		error_log( 'AVTO ERROR: Background job nonce verification failed for session ' . $session_id );
+		wp_die( 'Invalid nonce', 'AVTO Background Job', array( 'response' => 403 ) );
+	}
+	
+	// Debug logging
+	if ( get_option( 'avto_debug_mode', false ) ) {
+		error_log( 'AVTO: Starting job processing for session ' . $session_id );
+	}
+	
+	// Process the job
+	avto_run_generation_job( $session_id );
+	
+	// Debug logging
+	if ( get_option( 'avto_debug_mode', false ) ) {
+		error_log( 'AVTO: Completed job processing for session ' . $session_id );
+	}
+	
+	// Exit cleanly
+	wp_die( 'Job processed', 'AVTO Background Job', array( 'response' => 200 ) );
+}
+add_action( 'wp_ajax_avto_process_background_job', 'avto_process_background_job' );
+add_action( 'wp_ajax_nopriv_avto_process_background_job', 'avto_process_background_job' );
+
+/**
+ * Background Worker: Process Generation Job
+ * 
+ * This function performs the actual API call and handles the result.
+ * It can be called either by:
+ * 1. The HTTP endpoint (immediate background processing)
+ * 2. Action Scheduler (if you re-enable it via custom code)
+ * 
+ * The job is executed in a separate PHP process, independent of the user's
+ * browser session. This allows long-running API calls without timeouts.
+ * 
+ * @since 2.5.0
+ * @param int $session_id The ID of the avto_tryon_session post.
+ */
+function avto_run_generation_job( $session_id ) {
+	// Validate session ID
+	$session = get_post( $session_id );
+	
+	// Debug logging
+	if ( get_option( 'avto_debug_mode', false ) ) {
+		error_log( 'AVTO: Worker function called for session ' . $session_id );
+	}
+	
+	if ( ! $session || 'avto_tryon_session' !== $session->post_type ) {
+		error_log( 'AVTO: Invalid session ID in background job - ' . $session_id );
+		return;
+	}
+	
+	// Update status to processing
+	wp_update_post( array(
+		'ID'          => $session_id,
+		'post_status' => 'avto-processing',
+	) );
+	
+	// Fetch job parameters from post meta
+	$product_id          = absint( get_post_meta( $session_id, '_product_id', true ) );
+	$user_image_id       = absint( get_post_meta( $session_id, '_user_image_id', true ) );
+	$user_image_path     = get_post_meta( $session_id, '_user_image_path', true );
+	$clothing_image_id   = absint( get_post_meta( $session_id, '_clothing_image_id', true ) );
+	$clothing_image_path = get_post_meta( $session_id, '_clothing_image_path', true );
+	$is_wc_mode          = (bool) get_post_meta( $session_id, '_is_wc_mode', true );
+	$cache_key           = get_post_meta( $session_id, '_cache_key', true );
+	
+	// Validate required data
+	if ( empty( $user_image_path ) || empty( $clothing_image_path ) ) {
+		$error_message = __( 'Missing required image paths in job data.', 'avto' );
+		
+		wp_update_post( array(
+			'ID'          => $session_id,
+			'post_status' => 'avto-failed',
+		) );
+		update_post_meta( $session_id, '_avto_error_message', $error_message );
+		
+		error_log( 'AVTO: Job ' . $session_id . ' failed - ' . $error_message );
+		return;
+	}
+	
+	// Verify files still exist
+	if ( ! file_exists( $user_image_path ) ) {
+		$error_message = __( 'User image file no longer exists.', 'avto' );
+		
+		wp_update_post( array(
+			'ID'          => $session_id,
+			'post_status' => 'avto-failed',
+		) );
+		update_post_meta( $session_id, '_avto_error_message', $error_message );
+		
+		error_log( 'AVTO: Job ' . $session_id . ' failed - ' . $error_message );
+		return;
+	}
+	
+	if ( ! file_exists( $clothing_image_path ) ) {
+		$error_message = __( 'Clothing image file no longer exists.', 'avto' );
+		
+		wp_update_post( array(
+			'ID'          => $session_id,
+			'post_status' => 'avto-failed',
+		) );
+		update_post_meta( $session_id, '_avto_error_message', $error_message );
+		
+		error_log( 'AVTO: Job ' . $session_id . ' failed - ' . $error_message );
+		return;
+	}
+	
+	// Allow developers to hook before API call
+	do_action( 'avto_before_api_call', $user_image_path, $clothing_image_path, $product_id, $clothing_image_id );
+	
+	// Call Gemini API
+	$result = avto_call_gemini_api( 
+		$user_image_path, 
+		$clothing_image_path, 
+		$product_id, 
+		$user_image_id, 
+		$clothing_image_id 
+	);
+	
+	// Handle result
+	if ( is_wp_error( $result ) ) {
+		// Job failed
+		$error_message = $result->get_error_message();
+		
+		wp_update_post( array(
+			'ID'          => $session_id,
+			'post_status' => 'avto-failed',
+		) );
+		update_post_meta( $session_id, '_avto_error_message', $error_message );
+		
+		error_log( 'AVTO: Job ' . $session_id . ' failed - ' . $error_message );
+		
+		// Allow developers to hook on failure
+		do_action( 'avto_generation_job_failed', $session_id, $error_message );
+		
+	} else {
+		// Job succeeded
+		$attachment_id = $result['attachment_id'];
+		$image_url     = $result['image_url'];
+		
+		wp_update_post( array(
+			'ID'          => $session_id,
+			'post_status' => 'publish', // Completed successfully
+		) );
+		update_post_meta( $session_id, '_generated_image_id', $attachment_id );
+		
+		// Cache the result if caching is enabled
+		$cache_enabled = get_option( 'avto_enable_caching', false );
+		if ( $cache_enabled && ! empty( $cache_key ) ) {
+			$cache_duration = get_option( 'avto_cache_duration', 86400 );
+			set_transient( $cache_key, $result, absint( $cache_duration ) );
+		}
+		
+		// Increment notification counter for the user
+		$user_id = absint( $session->post_author );
+		if ( $user_id > 0 ) {
+			$current_count = (int) get_user_meta( $user_id, '_avto_new_results_count', true );
+			update_user_meta( $user_id, '_avto_new_results_count', $current_count + 1 );
+		}
+		
+		// Allow developers to hook on success
+		do_action( 'avto_generation_job_completed', $session_id, $attachment_id, $image_url );
+	}
+}
+// Note: This function is called by avto_process_background_job() HTTP endpoint
+// You can also hook it to Action Scheduler if needed: add_action( 'avto_process_generation_job', 'avto_run_generation_job', 10, 1 );
 
 /**
  * Rate Limiting Function

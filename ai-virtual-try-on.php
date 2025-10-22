@@ -3,7 +3,7 @@
  * Plugin Name:       AI Virtual Try-On
  * Plugin URI:        https://github.com/yourusername/ai-virtual-try-on
  * Description:       AI-powered virtual try-on experience using Google's Gemini 2.5 Flash Image API. WooCommerce integration for seamless product page try-ons. Supports JPEG, PNG, WebP, HEIC, and HEIF formats. Fully customizable via admin settings.
- * Version:           2.4.0
+ * Version:           2.5.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Requires Plugins:  woocommerce
@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Plugin Constants
  */
-define( 'AVTO_VERSION', '2.4.0' );
+define( 'AVTO_VERSION', '2.5.0' );
 define( 'AVTO_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AVTO_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AVTO_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -154,6 +154,19 @@ function avto_upgrade_routine( $from_version ) {
 		}
 	}
 	
+	// Upgrade to 2.5.0 - Background processing via Action Scheduler
+	// New features:
+	// - Async image generation with Action Scheduler
+	// - Job status tracking via custom post statuses
+	// - User notifications for completed jobs
+	// - Polling mechanism for real-time status updates
+	// No database migrations needed - all features work with existing data structures
+	if ( version_compare( $from_version, '2.5.0', '<' ) ) {
+		// Custom post statuses are registered on init, no migration needed
+		// Background processing is automatically enabled if Action Scheduler is available
+		// Existing synchronous workflow remains as fallback
+	}
+	
 	// Set upgrade notice transient
 	set_transient( 'avto_upgraded_notice', AVTO_VERSION, 60 );
 }
@@ -202,6 +215,62 @@ function avto_register_tryon_session_cpt() {
 	register_post_type( 'avto_tryon_session', $args );
 }
 add_action( 'init', 'avto_register_tryon_session_cpt' );
+
+/**
+ * Register Custom Post Statuses for Background Job Tracking
+ * 
+ * Enables tracking of try-on generation jobs through their lifecycle:
+ * - avto-pending: Job queued, waiting for Action Scheduler
+ * - avto-processing: Job currently being processed by background worker
+ * - avto-failed: Job failed (error stored in post meta)
+ * - publish: Job completed successfully (default WordPress status)
+ * 
+ * @since 2.5.0
+ */
+function avto_register_job_statuses() {
+	// Pending status - job queued but not yet started
+	register_post_status( 'avto-pending', array(
+		'label'                     => _x( 'Pending', 'try-on job status', 'avto' ),
+		'public'                    => false,
+		'exclude_from_search'       => true,
+		'show_in_admin_all_list'    => false,
+		'show_in_admin_status_list' => false,
+		'label_count'               => _n_noop(
+			'Pending <span class="count">(%s)</span>',
+			'Pending <span class="count">(%s)</span>',
+			'avto'
+		),
+	) );
+
+	// Processing status - job currently being processed
+	register_post_status( 'avto-processing', array(
+		'label'                     => _x( 'Processing', 'try-on job status', 'avto' ),
+		'public'                    => false,
+		'exclude_from_search'       => true,
+		'show_in_admin_all_list'    => false,
+		'show_in_admin_status_list' => false,
+		'label_count'               => _n_noop(
+			'Processing <span class="count">(%s)</span>',
+			'Processing <span class="count">(%s)</span>',
+			'avto'
+		),
+	) );
+
+	// Failed status - job failed with error
+	register_post_status( 'avto-failed', array(
+		'label'                     => _x( 'Failed', 'try-on job status', 'avto' ),
+		'public'                    => false,
+		'exclude_from_search'       => true,
+		'show_in_admin_all_list'    => false,
+		'show_in_admin_status_list' => false,
+		'label_count'               => _n_noop(
+			'Failed <span class="count">(%s)</span>',
+			'Failed <span class="count">(%s)</span>',
+			'avto'
+		),
+	) );
+}
+add_action( 'init', 'avto_register_job_statuses' );
 
 /**
  * Save Try-On History After Successful Generation

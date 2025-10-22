@@ -28,7 +28,7 @@ assets/js/avto-frontend.js      # Dual-mode logic: AVTOModal (WooCommerce) + AVT
 1. **Frontend** → User uploads photo + selects clothing image → AJAX to `avto_handle_generate_image_request`
 2. **Backend validates**:
    - Nonce verification (`check_ajax_referer`)
-   - Rate limiting (transient-based per IP)
+   - Rate limiting (two-tier: global site-wide check, then per-user/IP check)
    - MIME type check (client-provided AND actual file content via `finfo_file`)
    - File size limit (configurable, default 5MB)
 3. **Gemini API call**:
@@ -149,9 +149,22 @@ Check `ai-virtual-try-on.php:241-282` for full logic.
 
 Product data (`avtoProductData`) is localized in `wp_footer` at priority 5 (see `ai-virtual-try-on.php:338-379`) because the `$product` object isn't available earlier on product pages.
 
-### 5. Rate Limiting Uses Transients
+### 5. Rate Limiting Uses Two Tiers
 
-See `includes/avto-ajax-handler.php:596-640`. Key format: `avto_rate_limit_{$ip}`. Window is 60 seconds (default). Increment counter, check limit, delete transient if exceeded.
+See `includes/avto-ajax-handler.php:596-700`. **Two-tier system** (as of v2.4.0):
+
+**Per-User/IP Limits** (always active):
+- Key format: `avto_rate_limit_user_{$user_id}` or `avto_rate_limit_ip_{$md5_hash}`
+- Default: 10 requests per 60 seconds per user/IP
+- Each user/IP tracked independently
+
+**Global Site-Wide Limits** (optional):
+- Key: `avto_global_rate_limit`
+- Default: 100 requests per 3600 seconds (disabled by default)
+- Applies to ALL users combined
+- Checked first before per-user limits
+
+Both use WordPress transients. To clear: `wp transient delete avto_rate_limit_user_123` or `wp transient delete avto_global_rate_limit`.
 
 ## Extension Points
 
@@ -200,7 +213,7 @@ add_action( 'avto_after_generation_success', function( $attachment_id, $image_ur
 
 ## Version & Compatibility
 
-- **Current version**: 2.2.2 (see `ai-virtual-try-on.php:26`)
+- **Current version**: (see `ai-virtual-try-on.php:26`)
 - **WordPress**: 6.0+
 - **PHP**: 7.4+ (8.0+ recommended)
 - **WooCommerce**: 5.0+ (optional dependency)
@@ -214,5 +227,7 @@ add_action( 'avto_after_generation_success', function( $attachment_id, $image_ur
 | Modify API prompt | Settings → AI tab OR filter `avto_gemini_prompt` |
 | Change button position | Settings → WooCommerce tab → Display Hook |
 | Debug AJAX errors | Enable `avto_debug_mode` option OR check `WP_DEBUG` logs |
-| Clear rate limit | Delete transient `avto_rate_limit_{$ip}` |
+| Clear per-user rate limit | Delete transient `avto_rate_limit_user_{$id}` or `avto_rate_limit_ip_{$hash}` |
+| Clear global rate limit | Delete transient `avto_global_rate_limit` |
+| View rate limit status | Dashboard widget (when global limiting enabled) |
 | Test without WC | Use shortcode `[ai_virtual_tryon]` on any page |

@@ -666,7 +666,14 @@
 				timeout: 65000,
 				success: function(response) {
 					if (response.success) {
-						self.showSuccessState(response.data.image_url);
+						// Check if response is async (background job)
+						if (response.data.status === 'pending' && response.data.session_id) {
+							// Show background processing message
+							self.showBackgroundProcessingState(response.data.message, response.data.session_id);
+						} else {
+							// Synchronous response (fallback)
+							self.showSuccessState(response.data.image_url);
+						}
 					} else {
 						self.showErrorState(response.data.message || 'An error occurred. Please try again.');
 					}
@@ -681,6 +688,111 @@
 					}
 
 					self.showErrorState(errorMsg);
+				}
+			});
+		},
+
+		/**
+		 * Show background processing state with polling
+		 */
+		showBackgroundProcessingState: function(message, sessionId) {
+			$('#avto-generate-btn').prop('disabled', true);
+			$('#avto-results-section').fadeIn(300);
+			$('#avto-loading').hide();
+			$('#avto-error').hide();
+			$('#avto-success').hide();
+
+			// Create or update background processing UI
+			let $bgProcessing = $('#avto-background-processing');
+			
+			if (!$bgProcessing.length) {
+				$bgProcessing = $('<div id="avto-background-processing" class="avto-background-processing">' +
+					'<div class="avto-spinner"></div>' +
+					'<p class="avto-bg-message"></p>' +
+					'<p class="avto-bg-hint">You can close this window and continue shopping. We\'ll notify you when your try-on is ready!</p>' +
+					'<button type="button" id="avto-continue-shopping-btn" class="avto-btn avto-btn-secondary">Continue Shopping</button>' +
+					'</div>');
+				$('#avto-results-section').append($bgProcessing);
+			}
+
+			$bgProcessing.find('.avto-bg-message').text(message);
+			$bgProcessing.fadeIn(300);
+
+			// Scroll to results
+			const $results = $('#avto-results-section');
+			if ($results.length) {
+				this.scrollToElement($results, 100);
+			}
+
+			// Start polling for job status
+			this.startJobPolling(sessionId);
+		},
+
+		/**
+		 * Start polling for job status
+		 */
+		startJobPolling: function(sessionId) {
+			const self = this;
+			let pollAttempts = 0;
+			const maxPollAttempts = 30; // Poll for up to 5 minutes (30 * 10 seconds)
+
+			const pollInterval = setInterval(function() {
+				pollAttempts++;
+
+				// Stop polling after max attempts
+				if (pollAttempts > maxPollAttempts) {
+					clearInterval(pollInterval);
+					$('#avto-background-processing').hide();
+					self.showErrorState('The generation is taking longer than expected. Please check your history page later.');
+					return;
+				}
+
+				// Check job status
+				$.ajax({
+					url: avtoAjax.ajaxUrl,
+					type: 'POST',
+					data: {
+						action: 'avto_check_job_status',
+						nonce: avtoAjax.nonce,
+						session_id: sessionId
+					},
+					success: function(response) {
+						if (response.success) {
+							if (response.data.status === 'completed') {
+								// Job completed successfully
+								clearInterval(pollInterval);
+								$('#avto-background-processing').hide();
+								self.showSuccessState(response.data.image_url);
+							}
+							// If status is 'pending' or 'processing', continue polling
+						} else {
+							// Job failed
+							clearInterval(pollInterval);
+							$('#avto-background-processing').hide();
+							self.showErrorState(response.data.message || 'Generation failed. Please try again.');
+						}
+					},
+					error: function() {
+						// Continue polling on network errors
+						console.log('AVTO: Poll attempt ' + pollAttempts + ' failed, retrying...');
+					}
+				});
+			}, 10000); // Poll every 10 seconds
+
+			// Store interval ID for cleanup
+			this.pollingInterval = pollInterval;
+
+			// Add continue shopping button handler
+			$(document).off('click', '#avto-continue-shopping-btn').on('click', '#avto-continue-shopping-btn', function() {
+				clearInterval(pollInterval);
+				
+				// Close modal if in WooCommerce mode
+				if (typeof AVTOModal !== 'undefined' && AVTOModal.isModalMode) {
+					AVTOModal.closeModal();
+				} else {
+					// Shortcode mode - just hide results
+					$('#avto-results-section').fadeOut(300);
+					$('#avto-generate-btn').prop('disabled', false);
 				}
 			});
 		},
