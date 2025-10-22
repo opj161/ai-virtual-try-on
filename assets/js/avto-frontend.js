@@ -10,6 +10,166 @@
 	'use strict';
 
 	/**
+	 * Toast Notification System
+	 * 
+	 * Shows persistent notifications for completed try-on jobs.
+	 * Uses localStorage for cross-page persistence within the same session.
+	 */
+	const AVTOToast = {
+		storageKey: 'avto_pending_notifications',
+		toastDuration: 15000, // 15 seconds auto-dismiss
+
+		/**
+		 * Initialize toast system - check for pending notifications on page load
+		 */
+		init: function() {
+			this.checkPendingNotifications();
+			this.bindToastEvents();
+		},
+
+		/**
+		 * Check localStorage for pending notifications and display them
+		 */
+		checkPendingNotifications: function() {
+			const notifications = this.getPendingNotifications();
+			
+			if (notifications && notifications.length > 0) {
+				// Show toast for pending notifications
+				const count = notifications.length;
+				const message = count === 1 
+					? 'Your virtual try-on is ready!' 
+					: count + ' virtual try-on results are ready!';
+				
+				this.showToast(message, count);
+			}
+		},
+
+		/**
+		 * Get pending notifications from localStorage
+		 */
+		getPendingNotifications: function() {
+			try {
+				const stored = localStorage.getItem(this.storageKey);
+				return stored ? JSON.parse(stored) : [];
+			} catch (e) {
+				console.error('AVTO: Error reading notifications from localStorage', e);
+				return [];
+			}
+		},
+
+		/**
+		 * Add a new notification to localStorage
+		 */
+		addNotification: function(sessionId, imageUrl) {
+			const notifications = this.getPendingNotifications();
+			
+			// Add new notification if not already present
+			if (!notifications.find(n => n.sessionId === sessionId)) {
+				notifications.push({
+					sessionId: sessionId,
+					imageUrl: imageUrl,
+					timestamp: Date.now()
+				});
+				
+				try {
+					localStorage.setItem(this.storageKey, JSON.stringify(notifications));
+				} catch (e) {
+					console.error('AVTO: Error saving notification to localStorage', e);
+				}
+			}
+		},
+
+		/**
+		 * Clear all notifications from localStorage
+		 */
+		clearNotifications: function() {
+			try {
+				localStorage.removeItem(this.storageKey);
+			} catch (e) {
+				console.error('AVTO: Error clearing notifications from localStorage', e);
+			}
+		},
+
+		/**
+		 * Show toast notification
+		 */
+		showToast: function(message, count) {
+			// Remove existing toast if present
+			$('#avto-toast-notification').remove();
+
+			// Create toast HTML
+			const historyUrl = typeof avtoProductData !== 'undefined' && avtoProductData.historyUrl 
+				? avtoProductData.historyUrl 
+				: '/my-account/try-on-history/';
+
+			const toastHtml = `
+				<div id="avto-toast-notification" class="avto-toast" role="alert" aria-live="polite" aria-atomic="true">
+					<div class="avto-toast-content">
+						<svg class="avto-toast-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+							<polyline points="22 4 12 14.01 9 11.01"></polyline>
+						</svg>
+						<div class="avto-toast-body">
+							<p class="avto-toast-message">${message}</p>
+							<a href="${historyUrl}" class="avto-toast-cta">View Result${count > 1 ? 's' : ''}</a>
+						</div>
+						<button type="button" class="avto-toast-close" aria-label="Dismiss notification">
+							<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<line x1="18" y1="6" x2="6" y2="18"></line>
+								<line x1="6" y1="6" x2="18" y2="18"></line>
+							</svg>
+						</button>
+					</div>
+				</div>
+			`;
+
+			// Append to body
+			$('body').append(toastHtml);
+
+			// Trigger animation after a tiny delay (for CSS transition)
+			setTimeout(() => {
+				$('#avto-toast-notification').addClass('avto-toast-show');
+			}, 10);
+
+			// Auto-dismiss after duration
+			setTimeout(() => {
+				this.hideToast();
+			}, this.toastDuration);
+		},
+
+		/**
+		 * Hide toast notification
+		 */
+		hideToast: function() {
+			const $toast = $('#avto-toast-notification');
+			$toast.removeClass('avto-toast-show');
+			
+			// Remove from DOM after animation completes
+			setTimeout(() => {
+				$toast.remove();
+			}, 300);
+		},
+
+		/**
+		 * Bind toast-specific events
+		 */
+		bindToastEvents: function() {
+			const self = this;
+
+			// Close button click
+			$(document).on('click', '.avto-toast-close', function() {
+				self.hideToast();
+			});
+
+			// CTA link click - clear notifications
+			$(document).on('click', '.avto-toast-cta', function() {
+				self.clearNotifications();
+				self.hideToast();
+			});
+		}
+	};
+
+	/**
 	 * WooCommerce Modal Mode
 	 */
 	const AVTOModal = {
@@ -762,7 +922,18 @@
 								// Job completed successfully
 								clearInterval(pollInterval);
 								$('#avto-background-processing').hide();
-								self.showSuccessState(response.data.image_url);
+								
+								// Check if modal is still open
+								const modalOpen = $('#avto-modal').is(':visible') || $('#avto-container').is(':visible');
+								
+								if (modalOpen) {
+									// Modal open - show result directly
+									self.showSuccessState(response.data.image_url);
+								} else {
+									// Modal closed - save notification and show toast
+									AVTOToast.addNotification(sessionId, response.data.image_url);
+									AVTOToast.showToast('Your virtual try-on is ready!', 1);
+								}
 							}
 							// If status is 'pending' or 'processing', continue polling
 						} else {
@@ -936,6 +1107,10 @@
 
 	// Initialize when document is ready
 	$(document).ready(function() {
+		// Initialize toast notification system
+		AVTOToast.init();
+		
+		// Initialize modal/shortcode mode
 		AVTOModal.init();
 	});
 

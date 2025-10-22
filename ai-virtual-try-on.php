@@ -3,7 +3,7 @@
  * Plugin Name:       AI Virtual Try-On
  * Plugin URI:        https://github.com/yourusername/ai-virtual-try-on
  * Description:       AI-powered virtual try-on experience using Google's Gemini 2.5 Flash Image API. WooCommerce integration for seamless product page try-ons. Supports JPEG, PNG, WebP, HEIC, and HEIF formats. Fully customizable via admin settings.
- * Version:           2.5.1
+ * Version:           2.5.2
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Requires Plugins:  woocommerce
@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Plugin Constants
  */
-define( 'AVTO_VERSION', '2.5.1' );
+define( 'AVTO_VERSION', '2.5.2' );
 define( 'AVTO_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AVTO_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AVTO_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -593,6 +593,9 @@ function avto_localize_product_data() {
 		'ajaxUrl'      => admin_url( 'admin-ajax.php' ),
 		'nonce'        => wp_create_nonce( 'avto-product-images-nonce' ),
 		'fetchViaAjax' => true,
+		'historyUrl'   => function_exists( 'wc_get_account_endpoint_url' ) 
+			? wc_get_account_endpoint_url( 'try-on-history' ) 
+			: home_url( '/my-account/try-on-history/' ),
 	);
 	
 	// Add default user image if logged in and image is set
