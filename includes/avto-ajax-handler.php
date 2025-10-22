@@ -743,6 +743,10 @@ function avto_call_gemini_api( $user_image_path, $clothing_image_path, $product_
  * immediately continues without waiting for a response. The background request
  * runs independently.
  * 
+ * FALLBACK: In Docker/local environments where loopback HTTP requests fail
+ * (like wp-env), this will detect the failure and execute directly via
+ * WordPress's shutdown hook instead.
+ * 
  * @since 2.5.0
  * @param int $session_id The ID of the avto_tryon_session post.
  */
@@ -762,21 +766,40 @@ function avto_trigger_background_job( $session_id ) {
 		error_log( 'AVTO: Triggering background job for session ' . $session_id . ' at URL: ' . $url );
 	}
 	
-	// Fire non-blocking request - this returns immediately
-	$result = wp_remote_post(
+	// TRY APPROACH 1: Non-blocking HTTP request (works on most production servers)
+	// First, do a quick blocking test to see if loopback requests work
+	$test_result = wp_remote_post(
 		$url,
 		array(
-			'timeout'   => 1, // Allow time for connection establishment (1 second is sufficient)
-			'blocking'  => false, // Don't wait for response - CRITICAL!
+			'timeout'   => 0.5,
+			'blocking'  => true,
 			'sslverify' => apply_filters( 'https_local_ssl_verify', false ),
-			'cookies'   => $_COOKIE, // Pass cookies for authentication
+			'cookies'   => $_COOKIE,
 		)
 	);
 	
-	// Debug logging for failures
-	if ( is_wp_error( $result ) ) {
-		error_log( 'AVTO ERROR: Failed to trigger background job for session ' . $session_id . ' - ' . $result->get_error_message() );
+	$loopback_works = ! is_wp_error( $test_result );
+	
+	if ( $loopback_works ) {
+		// Loopback works! The test request already processed the job
+		// No need to do anything else
+		if ( get_option( 'avto_debug_mode', false ) ) {
+			error_log( 'AVTO: Loopback HTTP request succeeded for session ' . $session_id );
+		}
+		return;
 	}
+	
+	// APPROACH 2: Loopback failed - use shutdown hook as fallback
+	// This works in Docker/wp-env environments where port mapping prevents loopback
+	if ( get_option( 'avto_debug_mode', false ) ) {
+		error_log( 'AVTO: Loopback HTTP failed (' . $test_result->get_error_message() . '), using shutdown hook fallback for session ' . $session_id );
+	}
+	
+	// Schedule execution on shutdown (after response is sent to user)
+	add_action( 'shutdown', function() use ( $session_id ) {
+		// Process the job directly
+		avto_run_generation_job( $session_id );
+	}, 999 ); // Low priority to run after other shutdown tasks
 }
 
 /**
