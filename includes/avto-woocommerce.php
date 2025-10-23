@@ -253,6 +253,9 @@ function avto_wc_add_modal_html() {
 			</button>
 			<h2 id="avto-modal-title" class="avto-modal-title"><?php esc_html_e( 'Virtual Try-On', 'avto' ); ?></h2>
 			
+			<!-- ARIA live region for screen reader announcements -->
+			<div id="avto-status-message" class="avto-sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+			
 			<!-- Main try-on UI container -->
 			<div id="avto-container" class="avto-container">
 				<!-- Content will be dynamically populated by JavaScript -->

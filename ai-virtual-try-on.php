@@ -3,7 +3,7 @@
  * Plugin Name:       AI Virtual Try-On
  * Plugin URI:        https://github.com/yourusername/ai-virtual-try-on
  * Description:       AI-powered virtual try-on experience using Google's Gemini 2.5 Flash Image API. WooCommerce integration for seamless product page try-ons. Supports JPEG, PNG, WebP, HEIC, and HEIF formats. Fully customizable via admin settings.
- * Version:           2.6.1
+ * Version:           2.7.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Requires Plugins:  woocommerce
@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Plugin Constants
  */
-define( 'AVTO_VERSION', '2.6.1' );
+define( 'AVTO_VERSION', '2.7.0' );
 define( 'AVTO_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AVTO_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AVTO_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -517,11 +517,19 @@ function avto_enqueue_frontend_assets() {
 		error_log( 'AVTO: Enqueuing frontend assets. is_product: ' . ( is_product() ? 'yes' : 'no' ) );
 	}
 	
-	// Enqueue CSS
+	// Enqueue Design Tokens CSS first (base styles - v2.7.0+)
+	wp_enqueue_style(
+		'avto-design-tokens',
+		AVTO_PLUGIN_URL . 'assets/css/avto-design-tokens.css',
+		array(),
+		AVTO_VERSION
+	);
+	
+	// Enqueue main frontend CSS (depends on design tokens)
 	wp_enqueue_style(
 		'avto-frontend-style',
 		AVTO_PLUGIN_URL . 'assets/css/avto-frontend.css',
-		array(),
+		array( 'avto-design-tokens' ),
 		AVTO_VERSION
 	);
 

@@ -4,10 +4,83 @@
  * Dual-mode support:
  * 1. WooCommerce modal mode (product pages)
  * 2. Shortcode mode (dedicated pages) - backward compatibility
+ * 
+ * Version 2.7.0+ improvements:
+ * - Focus trap for modal accessibility
+ * - ARIA live region announcements
+ * - Skeleton loaders for better UX
+ * - Enhanced error handling
  */
 
 (function($) {
 	'use strict';
+
+	/**
+	 * Accessibility Helper - ARIA Announcements
+	 */
+	const AVTOAccessibility = {
+		/**
+		 * Announce status to screen readers
+		 */
+		announceStatus: function(message) {
+			const $status = $('#avto-status-message');
+			if ($status.length) {
+				$status.text(message);
+			}
+		},
+
+		/**
+		 * Focus trap for modal
+		 */
+		trapFocus: function($modal) {
+			const focusableSelector = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])';
+			const $focusableElements = $modal.find(focusableSelector);
+			const $firstElement = $focusableElements.first();
+			const $lastElement = $focusableElements.last();
+
+			// Remove any existing trap listener
+			$modal.off('keydown.focustrap');
+
+			// Add trap listener
+			$modal.on('keydown.focustrap', function(e) {
+				if (e.key === 'Tab') {
+					if (e.shiftKey) {
+						// Shift + Tab
+						if (document.activeElement === $firstElement[0]) {
+							e.preventDefault();
+							$lastElement.focus();
+						}
+					} else {
+						// Tab
+						if (document.activeElement === $lastElement[0]) {
+							e.preventDefault();
+							$firstElement.focus();
+						}
+					}
+				} else if (e.key === 'Escape') {
+					// Close modal on Escape
+					AVTOModal.closeModal();
+				}
+			});
+
+			// Focus first element after a short delay (for transitions)
+			setTimeout(function() {
+				const $closeBtn = $modal.find('.avto-modal-close');
+				if ($closeBtn.length) {
+					$closeBtn.focus();
+				} else {
+					$firstElement.focus();
+				}
+			}, 100);
+		},
+
+		/**
+		 * Remove focus trap
+		 */
+		removeFocusTrap: function($modal) {
+			$modal.off('keydown.focustrap');
+		}
+	};
 
 	/**
 	 * Toast Notification System
@@ -374,13 +447,14 @@
 					// Populate gallery with fetched images
 					AVTOModal.populateGallery(response.data.images);
 					
-					// Focus close button for accessibility
-					setTimeout(function() {
-						$('.avto-modal-close').focus();
-					}, 350);
-					
 					// Initialize core functionality
 					AVTOCore.init();
+					
+					// Trap focus for accessibility (after UI is ready)
+					setTimeout(function() {
+						AVTOAccessibility.trapFocus($modal);
+						AVTOAccessibility.announceStatus('Virtual Try-On modal opened. Upload your photo to begin.');
+					}, 350);
 				} else {
 					$modal.fadeOut(300);
 					$('body').removeClass('avto-modal-open');
@@ -399,6 +473,10 @@
 		 */
 		closeModal: function() {
 			const $modal = $('#avto-modal');
+			
+			// Remove focus trap before closing
+			AVTOAccessibility.removeFocusTrap($modal);
+			
 			$modal.attr('aria-hidden', 'true').fadeOut(300);
 			$('body').removeClass('avto-modal-open');
 
@@ -1008,6 +1086,9 @@
 			$('#avto-error').hide();
 			$('#avto-success').hide();
 
+			// Announce to screen readers
+			AVTOAccessibility.announceStatus('Generating your virtual try-on. This may take up to 30 seconds.');
+
 			// Scroll to results (modal-aware)
 			const $results = $('#avto-results-section');
 			if ($results.length) {
@@ -1020,6 +1101,9 @@
 		 */
 		showErrorState: function(message) {
 			$('#avto-loading').hide();
+			
+			// Announce error to screen readers
+			AVTOAccessibility.announceStatus('Error: ' + message);
 			$('#avto-success').hide();
 			$('#avto-error-message').text(message);
 			$('#avto-error').fadeIn(300);
@@ -1035,6 +1119,9 @@
 			$('#avto-final-image').attr('src', imageUrl);
 			$('#avto-success').fadeIn(300);
 			$('#avto-generate-btn').prop('disabled', false);
+			
+			// Announce success to screen readers
+			AVTOAccessibility.announceStatus('Virtual try-on complete. View your result below.');
 		},
 
 		/**

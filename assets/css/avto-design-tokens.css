@@ -1,0 +1,341 @@
+/**
+ * AI Virtual Try-On Design Tokens
+ * 
+ * Single source of truth for all design decisions.
+ * This file defines CSS custom properties used throughout the plugin.
+ * 
+ * Color Philosophy:
+ * - Removed Sage green (not fitting brand aesthetic)
+ * - Primary: Burgundy (elegant, premium)
+ * - Accent: Lavender (soft, modern)
+ * - Neutral: Dusty Rose (warm, inviting)
+ * 
+ * @package AI_Virtual_Try_On
+ * @version 2.7.0
+ */
+
+:root {
+    /* ============================================
+       COLORS
+       ============================================ */
+    
+    /* Brand Colors - Core Palette */
+    --color-primary: #7d5a68;              /* MDR Burgundy */
+    --color-primary-dark: #63444f;         /* Burgundy Dark */
+    --color-primary-light: #9a6f7e;        /* Burgundy Light */
+    
+    --color-accent: #8b8391;               /* MDR Lavender */
+    --color-accent-light: #a89daa;         /* Lavender Light (replaces Sage) */
+    --color-accent-lighter: #c4bfc7;       /* Lavender Lighter (replaces Sage Light) */
+    
+    --color-neutral: #e1cccb;              /* MDR Dusty Rose */
+    --color-neutral-light: #f0e5e4;        /* Dusty Rose Light */
+    
+    /* Semantic Colors - Functional Usage */
+    --color-surface: #ffffff;
+    --color-surface-elevated: #fafafa;
+    --color-text: #333333;
+    --color-text-muted: #666666;
+    --color-text-subtle: #999999;
+    --color-border: var(--color-neutral);
+    --color-border-light: var(--color-neutral-light);
+    
+    /* State Colors */
+    --color-hover: var(--color-primary-dark);
+    --color-active: #4d3540;
+    --color-focus: var(--color-primary);
+    --color-disabled: var(--color-accent-lighter);    /* Was Sage light */
+    --color-disabled-text: #8a8a8a;
+    
+    /* Background Variations */
+    --color-bg-primary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    --color-bg-secondary: linear-gradient(135deg, var(--color-accent) 0%, var(--color-primary) 100%);
+    --color-bg-subtle: linear-gradient(135deg, var(--color-neutral-light) 0%, var(--color-surface) 100%);
+    
+    /* Shadow Colors - Alpha Variants */
+    --shadow-color-primary: rgba(125, 90, 104, 0.12);
+    --shadow-color-primary-md: rgba(125, 90, 104, 0.2);
+    --shadow-color-primary-lg: rgba(125, 90, 104, 0.3);
+    --shadow-color-primary-xl: rgba(125, 90, 104, 0.4);
+    --shadow-color-dark: rgba(0, 0, 0, 0.4);
+    
+    /* ============================================
+       TYPOGRAPHY
+       ============================================ */
+    
+    /* Font Families */
+    --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', 
+                    Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+    --font-monospace: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', 
+                      Consolas, 'Courier New', monospace;
+    
+    /* Font Sizes - Modular Scale (1.25 ratio - Major Third) */
+    --text-xs: 0.75rem;        /* 12px */
+    --text-sm: 0.875rem;       /* 14px */
+    --text-base: 1rem;         /* 16px */
+    --text-lg: 1.125rem;       /* 18px */
+    --text-xl: 1.25rem;        /* 20px */
+    --text-2xl: 1.563rem;      /* 25px */
+    --text-3xl: 1.953rem;      /* 31px */
+    --text-4xl: 2.441rem;      /* 39px */
+    
+    /* Font Weights */
+    --font-regular: 400;
+    --font-medium: 500;
+    --font-semibold: 600;
+    --font-bold: 700;
+    
+    /* Line Heights */
+    --leading-none: 1;
+    --leading-tight: 1.25;
+    --leading-snug: 1.375;
+    --leading-normal: 1.5;
+    --leading-relaxed: 1.625;
+    --leading-loose: 2;
+    
+    /* Letter Spacing */
+    --tracking-tighter: -0.05em;
+    --tracking-tight: -0.02em;
+    --tracking-normal: 0;
+    --tracking-wide: 0.02em;
+    --tracking-wider: 0.03em;
+    --tracking-widest: 0.1em;
+    
+    /* ============================================
+       SPACING
+       ============================================ */
+    
+    --space-0: 0;
+    --space-px: 1px;
+    --space-0-5: 0.125rem;     /* 2px */
+    --space-1: 0.25rem;        /* 4px */
+    --space-2: 0.5rem;         /* 8px */
+    --space-3: 0.75rem;        /* 12px */
+    --space-4: 1rem;           /* 16px */
+    --space-5: 1.25rem;        /* 20px */
+    --space-6: 1.5rem;         /* 24px */
+    --space-7: 1.75rem;        /* 28px */
+    --space-8: 2rem;           /* 32px */
+    --space-9: 2.25rem;        /* 36px */
+    --space-10: 2.5rem;        /* 40px */
+    --space-12: 3rem;          /* 48px */
+    --space-14: 3.5rem;        /* 56px */
+    --space-16: 4rem;          /* 64px */
+    
+    /* Semantic Spacing Aliases */
+    --space-xs: var(--space-2);
+    --space-sm: var(--space-3);
+    --space-md: var(--space-4);
+    --space-lg: var(--space-6);
+    --space-xl: var(--space-8);
+    --space-2xl: var(--space-10);
+    --space-3xl: var(--space-12);
+    
+    /* ============================================
+       SIZING
+       ============================================ */
+    
+    /* Icon Sizes */
+    --size-icon-xs: 16px;
+    --size-icon-sm: 20px;
+    --size-icon-md: 24px;
+    --size-icon-lg: 32px;
+    --size-icon-xl: 48px;
+    
+    /* Button Sizes */
+    --size-button-sm: 36px;
+    --size-button-md: 44px;
+    --size-button-lg: 56px;
+    
+    /* Container Widths */
+    --width-sm: 640px;
+    --width-md: 768px;
+    --width-lg: 1024px;
+    --width-xl: 1200px;
+    --width-2xl: 1440px;
+    
+    /* Upload Area */
+    --upload-height-min: 180px;
+    --upload-height-max: 240px;
+    
+    /* ============================================
+       BORDERS & RADII
+       ============================================ */
+    
+    /* Border Radii */
+    --radius-none: 0;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-2xl: 20px;
+    --radius-full: 50%;
+    --radius-pill: 9999px;
+    
+    /* Border Widths */
+    --border-width-0: 0;
+    --border-width-thin: 1px;
+    --border-width-medium: 2px;
+    --border-width-thick: 3px;
+    --border-width-heavy: 4px;
+    
+    /* ============================================
+       SHADOWS
+       ============================================ */
+    
+    --shadow-xs: 0 1px 2px var(--shadow-color-primary);
+    --shadow-sm: 0 2px 8px var(--shadow-color-primary);
+    --shadow-md: 0 4px 16px var(--shadow-color-primary-md);
+    --shadow-lg: 0 8px 24px var(--shadow-color-primary-lg);
+    --shadow-xl: 0 20px 60px var(--shadow-color-dark);
+    --shadow-2xl: 0 25px 80px var(--shadow-color-dark);
+    
+    --shadow-focus: 0 0 0 3px var(--color-primary);
+    --shadow-focus-ring: 0 0 0 3px rgba(125, 90, 104, 0.3);
+    
+    /* Inset Shadows */
+    --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+    
+    /* ============================================
+       TRANSITIONS
+       ============================================ */
+    
+    /* Durations */
+    --duration-instant: 50ms;
+    --duration-fast: 150ms;
+    --duration-base: 250ms;
+    --duration-slow: 350ms;
+    --duration-slower: 500ms;
+    --duration-slowest: 750ms;
+    
+    /* Easing Functions */
+    --ease-linear: linear;
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    
+    /* Common Transition Declarations */
+    --transition-colors: color var(--duration-base) var(--ease-in-out),
+                         background-color var(--duration-base) var(--ease-in-out),
+                         border-color var(--duration-base) var(--ease-in-out);
+    
+    --transition-transform: transform var(--duration-base) var(--ease-in-out);
+    
+    --transition-all: all var(--duration-base) var(--ease-in-out);
+    
+    --transition-shadow: box-shadow var(--duration-base) var(--ease-in-out);
+    
+    /* ============================================
+       Z-INDEX LAYERS
+       ============================================ */
+    
+    --z-base: 1;
+    --z-raised: 10;
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-fixed: 300;
+    --z-overlay: 400;
+    --z-modal-backdrop: 999999;
+    --z-modal-content: 1000000;
+    --z-toast: 1000001;
+    --z-tooltip: 1000002;
+    
+    /* ============================================
+       BREAKPOINTS (for reference in JS)
+       ============================================ */
+    
+    --breakpoint-xs: 380px;
+    --breakpoint-sm: 480px;
+    --breakpoint-md: 640px;
+    --breakpoint-lg: 768px;
+    --breakpoint-xl: 1024px;
+    --breakpoint-2xl: 1280px;
+    --breakpoint-3xl: 1536px;
+    
+    /* ============================================
+       ANIMATION KEYFRAMES
+       ============================================ */
+    
+    /* These are referenced by animation names */
+    /* Actual @keyframes defined at bottom of file */
+}
+
+/* ============================================
+   ANIMATION KEYFRAMES
+   ============================================ */
+
+@keyframes avto-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes avto-slide-up {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes avto-slide-down {
+    from {
+        transform: translateY(-30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes avto-scale-in {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes avto-shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+@keyframes avto-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes avto-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+@keyframes avto-bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
