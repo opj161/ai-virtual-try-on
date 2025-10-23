@@ -47,6 +47,22 @@
     --color-disabled: var(--color-accent-lighter);    /* Was Sage light */
     --color-disabled-text: #8a8a8a;
     
+    /* Notification/Notice Colors - Using Brand Palette */
+    --color-info-bg: #f5f3f6;              /* Very light Lavender */
+    --color-info-border: var(--color-accent-lighter);  /* Lavender neutral */
+    --color-info-text: var(--color-primary-dark);      /* Dark Burgundy for contrast */
+    
+    --color-success-bg: #f9f3f3;           /* Very light Dusty Rose */
+    --color-success-border: var(--color-neutral);      /* Dusty Rose neutral */
+    --color-success-text: var(--color-primary-dark);
+    
+    --color-warning-bg: #fff9e6;           /* Warm light yellow (neutral) */
+    --color-warning-border: #e6d5b8;       /* Warm tan */
+    --color-warning-text: var(--color-primary-dark);
+    
+    /* Secondary Text Colors */
+    --color-text-secondary: #555555;       /* Between text and text-muted */
+    
     /* Background Variations */
     --color-bg-primary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
     --color-bg-secondary: linear-gradient(135deg, var(--color-accent) 0%, var(--color-primary) 100%);

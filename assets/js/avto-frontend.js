@@ -539,24 +539,22 @@
 					</button>
 				</div>
 
-				<!-- Results Section -->
-				<div id="avto-results-section" class="avto-section avto-results-section" style="display: none;">
-					<div id="avto-loading" class="avto-loading" style="display: none;">
-						<div class="avto-spinner"></div>
-						<p>Generating your virtual try-on...</p>
-					</div>
+			<!-- Results Section -->
+			<div id="avto-results-section" class="avto-section avto-results-section" style="display: none;">
+				<div id="avto-loading" class="avto-loading" style="display: none;">
+					<div class="avto-spinner"></div>
+					<p class="avto-loading-text">Generating your virtual try-on...</p>
+				</div>
 
-					<div id="avto-error" class="avto-error" style="display: none;">
-						<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-							<circle cx="12" cy="12" r="10"></circle>
-							<line x1="12" y1="8" x2="12" y2="12"></line>
-							<line x1="12" y1="16" x2="12.01" y2="16"></line>
-						</svg>
-						<p id="avto-error-message"></p>
-						<button id="avto-try-again-btn" class="avto-btn avto-btn-secondary">Try Again</button>
-					</div>
-
-					<div id="avto-success" class="avto-success" style="display: none;">
+				<div id="avto-error" class="avto-error" style="display: none;">
+					<svg class="avto-error-icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<circle cx="12" cy="12" r="10"></circle>
+						<line x1="12" y1="8" x2="12" y2="12"></line>
+						<line x1="12" y1="16" x2="12.01" y2="16"></line>
+					</svg>
+					<p id="avto-error-message" class="avto-error-message"></p>
+					<button id="avto-try-again-btn" class="avto-btn avto-btn-secondary">Try Again</button>
+				</div>					<div id="avto-success" class="avto-success" style="display: none;">
 						<img id="avto-final-image" src="" alt="Virtual try-on result">
 						<div class="avto-success-actions">
 							<button id="avto-download-btn" class="avto-btn avto-btn-secondary">Download Image</button>
@@ -631,16 +629,15 @@
 				$('.avto-file-label').hide();
 				$('#avto-image-preview').fadeIn(300);
 				
-				// Add a notice that default image is being used
-				if (!$('.avto-default-image-notice').length) {
-					$('#avto-image-preview').prepend(
-						'<div class="avto-default-image-notice" style="background: #e7f7ff; border: 1px solid #00a0d2; padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 4px; font-size: 0.85rem;">' +
-							'<strong>Using your default try-on photo.</strong> Upload a new image to use a different photo.' +
-						'</div>'
-					);
-				}
-				
-				console.log('AVTO: Loaded default user image', defaultImage);
+			// Add a notice that default image is being used
+			if (!$('.avto-default-image-notice').length) {
+				$('#avto-image-preview').prepend(
+					'<div class="avto-default-image-notice">' +
+						'<strong>Using your default try-on photo.</strong> ' +
+						'Upload a new image to use a different photo.' +
+					'</div>'
+				);
+			}				console.log('AVTO: Loaded default user image', defaultImage);
 			}
 		},
 
