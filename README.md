@@ -2,7 +2,7 @@
 
 A modern, AI-powered virtual try-on experience for WordPress using Google's Gemini 2.5 Flash Image API. Upload your photo, select clothing, and see yourself wearing it—all without leaving your WordPress site!
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.7.0-blue.svg)
 ![WordPress](https://img.shields.io/badge/wordpress-6.0%2B-brightgreen.svg)
 ![PHP](https://img.shields.io/badge/php-7.4%2B-purple.svg)
 ![License](https://img.shields.io/badge/license-GPLv2-red.svg)

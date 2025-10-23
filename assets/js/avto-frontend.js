@@ -603,6 +603,8 @@
 		selectedClothingId: null,
 		selectedClothingFile: null,
 		defaultUserImageId: null, // Store default image ID for logged-in users
+		hasDefaultImageAvailable: null, // Track if default exists (separate from current usage)
+		userRejectedDefault: false, // Track if user explicitly removed default image
 
 		/**
 		 * Initialize core functionality
@@ -613,35 +615,41 @@
 			this.checkGenerateButtonState();
 		},
 
-		/**
-		 * Load and display default user image if available
-		 */
-		loadDefaultUserImage: function() {
-			// Check if we have product data with default image
-			if (typeof avtoProductData !== 'undefined' && avtoProductData.defaultUserImage) {
-				const defaultImage = avtoProductData.defaultUserImage;
-				
-				// Store the default image ID
-				this.defaultUserImageId = defaultImage.id;
-				
-				// Display the default image in preview
-				$('#avto-preview-img').attr('src', defaultImage.url);
-				$('.avto-file-label').hide();
-				$('#avto-image-preview').fadeIn(300);
-				
-			// Add a notice that default image is being used
-			if (!$('.avto-default-image-notice').length) {
-				$('#avto-image-preview').prepend(
-					'<div class="avto-default-image-notice">' +
-						'<strong>Using your default try-on photo.</strong> ' +
-						'Upload a new image to use a different photo.' +
-					'</div>'
-				);
-			}				console.log('AVTO: Loaded default user image', defaultImage);
-			}
-		},
-
-		/**
+	/**
+	 * Load and display default user image if available
+	 */
+	loadDefaultUserImage: function() {
+		// Only load default if user hasn't explicitly rejected it
+		if (typeof avtoProductData !== 'undefined' && 
+			avtoProductData.defaultUserImage &&
+			!this.userRejectedDefault) {  // Don't auto-load if user rejected it
+			
+			const defaultImage = avtoProductData.defaultUserImage;
+			
+			// Store availability separately from current usage
+			this.hasDefaultImageAvailable = defaultImage.id;
+			
+			// Store the default image ID for current usage
+			this.defaultUserImageId = defaultImage.id;
+			
+			// Display the default image in preview
+			$('#avto-preview-img').attr('src', defaultImage.url);
+			$('.avto-file-label').hide();
+			$('#avto-image-preview').fadeIn(300);
+			
+		// Add a notice that default image is being used
+		if (!$('.avto-default-image-notice').length) {
+			$('#avto-image-preview').prepend(
+				'<div class="avto-default-image-notice">' +
+					'<strong>Using your default try-on photo.</strong> ' +
+					'Upload a new image to use a different photo.' +
+				'</div>'
+			);
+		}
+		
+		console.log('AVTO: Loaded default user image', defaultImage);
+	}
+},		/**
 		 * Bind event handlers
 		 */
 		bindEvents: function() {
@@ -702,20 +710,22 @@
 			});
 		},
 
-		/**
-		 * Handle file selection from input
-		 */
-		handleFileSelect: function(e) {
-			const file = e.target.files[0];
-			if (file) {
-				// Clear default image ID when user uploads a new file
-				this.defaultUserImageId = null;
-				$('.avto-default-image-notice').remove();
-				this.validateAndPreviewFile(file);
-			}
-		},
-
-		/**
+	/**
+	 * Handle file selection from input
+	 */
+	handleFileSelect: function(e) {
+		const file = e.target.files[0];
+		if (file) {
+			// Clear default image ID when user uploads a new file
+			this.defaultUserImageId = null;
+			
+			// Reset rejection flag since user is choosing a new image
+			this.userRejectedDefault = false;
+			
+			$('.avto-default-image-notice').remove();
+			this.validateAndPreviewFile(file);
+		}
+	},		/**
 		 * Handle drag over event
 		 */
 		handleDragOver: function(e) {
@@ -787,29 +797,29 @@
 			reader.readAsDataURL(file);
 		},
 
-		/**
-		 * Handle remove image button click
-		 */
-		handleRemoveImage: function(e) {
-			e.preventDefault();
-			this.userImageFile = null;
-			$('#avto-user-image').val('');
-			$('.avto-default-image-notice').remove();
-			
-			// Check if we should restore default image
-			if (typeof avtoProductData !== 'undefined' && avtoProductData.defaultUserImage) {
-				// Restore default image
-				this.loadDefaultUserImage();
-			} else {
-				// No default image, show upload prompt
-				$('#avto-image-preview').hide();
-				$('.avto-file-label').fadeIn(300);
-			}
-			
-			this.checkGenerateButtonState();
-		},
-
-		/**
+	/**
+	 * Handle remove image button click
+	 */
+	handleRemoveImage: function(e) {
+		e.preventDefault();
+		
+		// Clear both user file and default ID
+		this.userImageFile = null;
+		this.defaultUserImageId = null;  // Clear current usage of default
+		$('#avto-user-image').val('');
+		$('.avto-default-image-notice').remove();
+		
+		// If we had a default available, mark as explicitly rejected by user
+		if (this.hasDefaultImageAvailable) {
+			this.userRejectedDefault = true;
+		}
+		
+		// Always show upload prompt after removal
+		$('#avto-image-preview').hide();
+		$('.avto-file-label').fadeIn(300);
+		
+		this.checkGenerateButtonState();
+	},		/**
 		 * Handle clothing item selection
 		 */
 		handleClothingSelect: function(e, $item) {
@@ -1170,26 +1180,26 @@
 			}
 		},
 
-		/**
-		 * Reset all state (for modal close)
-		 */
-		reset: function() {
-			this.userImageFile = null;
-			this.selectedClothingId = null;
-			this.selectedClothingFile = null;
-			this.defaultUserImageId = null;
+	/**
+	 * Reset all state (for modal close)
+	 */
+	reset: function() {
+		this.userImageFile = null;
+		this.selectedClothingId = null;
+		this.selectedClothingFile = null;
+		this.defaultUserImageId = null;
+		this.hasDefaultImageAvailable = null;
+		this.userRejectedDefault = false;  // Reset rejection flag for fresh state
 
-			$('#avto-user-image').val('');
-			$('#avto-image-preview').hide();
-			$('.avto-file-label').show();
-			$('.avto-default-image-notice').remove();
-			$('.avto-clothing-item').removeClass('selected').attr('aria-pressed', 'false');
-			$('#avto-results-section').hide();
-			$('#avto-generate-btn').prop('disabled', true);
-		}
-	};
-
-	// Initialize when document is ready
+		$('#avto-user-image').val('');
+		$('#avto-image-preview').hide();
+		$('.avto-file-label').show();
+		$('.avto-default-image-notice').remove();
+		$('.avto-clothing-item').removeClass('selected').attr('aria-pressed', 'false');
+		$('#avto-results-section').hide();
+		$('#avto-generate-btn').prop('disabled', true);
+	}
+};	// Initialize when document is ready
 	$(document).ready(function() {
 		// Initialize toast notification system
 		AVTOToast.init();
